@@ -1,0 +1,8 @@
+langgraph
+langchain-openai
+tree-sitter
+tree-sitter-cpp
+neo4j
+qdrant-client
+python-dotenv
+pydantic
