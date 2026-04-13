@@ -1,10 +1,11 @@
 # main.py
-import os
+from sys import path
+
+from tools.github_loader import load_cpp_from_github
 from dotenv import load_dotenv
 from typing import TypedDict, Optional
 from langgraph.graph import StateGraph, END
 
-# Importing our modularized agents
 from agents.reader import run_reader_agent
 from agents.writer import run_writer_agent
 from agents.verifier import run_verifier_agent
@@ -35,7 +36,6 @@ def node_reader(state: GraphState):
 def node_writer(state: GraphState):
     current_context = state.get("context", "")
 
-    # Inject reviewer feedback if there was a rejection
     if state.get("reviewer_feedback"):
         current_context += f"\nFIX THIS ERROR POINTED OUT BY THE REVIEWER: {state['reviewer_feedback']}"
 
@@ -47,20 +47,19 @@ def node_writer(state: GraphState):
 def node_verifier(state: GraphState):
     result = run_verifier_agent(state["code"], state["documentation"])
     if result.approved:
-        print("   -> ✅ Documentation Approved!")
+        print("Documentation Approved!")
         return {"reviewer_feedback": "APPROVED"}
     else:
-        print(f"   -> ❌ Documentation Rejected: {result.rejection_reason}")
+        print(f"Documentation Rejected: {result.rejection_reason}")
         return {"reviewer_feedback": result.rejection_reason}
 
 
 def decide_next_step(state: GraphState):
-    """Decides whether the workflow ends or goes back to the Writer"""
     if state["reviewer_feedback"] == "APPROVED":
         return END
 
-    if state["attempts"] >= 3:  # Limit to prevent infinite loops
-        print("   -> ⚠️ Max attempts reached. Forcing termination.")
+    if state["attempts"] >= 3:
+        print("Max attempts reached. Forcing termination.")
         return END
 
     return "writer"
@@ -87,30 +86,37 @@ workflow.add_conditional_edges(
 app = workflow.compile()
 
 if __name__ == "__main__":
-    legacy_cpp_code = """
-    double calculate_discount(double value, bool is_vip) {
-        if (value < 0) {
-            throw std::invalid_argument("Value cannot be negative");
+
+    pathGit = "https://github.com/dosbox-staging/dosbox-staging.git"
+
+    github_url = pathGit
+
+    print("Starting the LangGraph agentic workflow...\n")
+
+    repo_files = load_cpp_from_github(github_url, target_dir="./tmp_repo")
+
+    if repo_files:
+        first_file_path = list(repo_files.keys())[0]
+        first_file_content = repo_files[first_file_path]
+
+        print(f"\n Sending file to agents: {first_file_path}")
+
+        initial_state = {
+            "code": first_file_content,
+            "context": f"File path: {first_file_path}",
+            "documentation": None,
+            "reviewer_feedback": "",
+            "attempts": 0
         }
-        if (is_vip) {
-            return value * 0.80; 
-        }
-        return value * 0.95; 
-    }
-    """
 
-    initial_state = {
-        "code": legacy_cpp_code,
-        "context": "",
-        "documentation": None,
-        "reviewer_feedback": "",
-        "attempts": 0
-    }
+        final_result = app.invoke(initial_state)
 
-    print("🚀 Starting the LangGraph agentic workflow...\n")
-    final_result = app.invoke(initial_state)
+        print("\n=============================================")
+        print(f" FINAL RESULT FOR {first_file_path} ")
+        print("=============================================")
+        print(final_result["documentation"].model_dump_json(indent=2))
 
-    print("\n=============================================")
-    print("✅ FINAL RESULT (JSON READY TO SAVE) ✅")
-    print("=============================================")
-    print(final_result["documentation"].model_dump_json(indent=2))
+    else:
+        print("No C/C++ files found in the specified repository.")
+
+
