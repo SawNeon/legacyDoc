@@ -126,7 +126,7 @@ app = workflow.compile()
 if __name__ == "__main__":
     github_url = "https://github.com/dosbox-staging/dosbox-staging.git"
 
-    print("🚀 Iniciando Workflow WaveCast...\n")
+    print("🚀 Iniciando Workflow Legacy Doc...\n")
 
     repo_files = load_cpp_from_github(github_url, target_dir="./tmp_repo")
 
