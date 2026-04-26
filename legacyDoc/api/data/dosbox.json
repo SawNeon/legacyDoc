@@ -1,0 +1,249 @@
+[
+  {
+    "name": "DOSBOX_GetTicksDone",
+    "kind": "function",
+    "return_type": "int64_t",
+    "args": [],
+    "summary": "Retorna os ticks concluídos.",
+    "description": "Olá, Time WaveCast! Esta função retorna o número de ticks que foram concluídos. Isso é útil para monitorar o progresso de tarefas temporizadas no emulador. Ao chamar esta função, consigo obter uma contagem precisa dos ticks que já foram processados.",
+    "raises": []
+  },
+  {
+    "name": "DOSBOX_SetTicksDone",
+    "kind": "function",
+    "return_type": "void",
+    "args": [
+      {
+        "name": "ticks_done",
+        "type": "const int64_t"
+      }
+    ],
+    "summary": "Define o número de ticks concluídos.",
+    "description": "Olá, Time WaveCast! Esta função permite definir o número de ticks que foram concluídos. Isso é importante para atualizar o estado do emulador e garantir que as tarefas temporizadas sejam gerenciadas corretamente. Ao usar esta função, consigo ajustar o progresso das operações em andamento.",
+    "raises": []
+  },
+  {
+    "name": "DOSBOX_SetTicksScheduled",
+    "kind": "function",
+    "return_type": "void",
+    "args": [
+      {
+        "name": "ticks_scheduled",
+        "type": "const int64_t"
+      }
+    ],
+    "summary": "Define a função para definir os ticks agendados.",
+    "description": "Olá, Time WaveCast! Nesta função, eu defino o valor de 'ticks.scheduled' com o parâmetro 'ticks_scheduled'. Isso é importante para garantir que o número de ticks agendados seja atualizado corretamente no sistema.",
+    "raises": []
+  },
+  {
+    "name": "normal_loop",
+    "kind": "function",
+    "return_type": "Bitu",
+    "args": [],
+    "summary": "Define a função para executar um loop normal.",
+    "description": "Olá, Time WaveCast! Aqui, eu implemento um loop infinito que processa requisições e executa callbacks. Isso é crucial para manter o funcionamento contínuo do sistema, garantindo que as tarefas sejam realizadas de forma eficiente.",
+    "raises": []
+  },
+  {
+    "name": "increase_ticks",
+    "kind": "function",
+    "return_type": "void",
+    "args": [],
+    "summary": "Aumenta os ticks do emulador.",
+    "description": "Olá, Time WaveCast! Neste contexto, eu estou aumentando os ticks do emulador. Se os ticks estiverem bloqueados, eu os redefino para 5 e ajusto os valores relacionados. Caso contrário, eu calculo os novos ticks e atualizo os ticks agendados. Isso garante que o emulador funcione de forma eficiente.",
+    "raises": []
+  },
+  {
+    "name": "DOSBOX_GetVersion",
+    "kind": "function",
+    "return_type": "const char*",
+    "args": [],
+    "summary": "Retorna a versão do DOSBox.",
+    "description": "Olá, Time WaveCast! Esta função fornece a versão atual do DOSBox. Ao chamá-la, eu retorno uma string constante que contém a versão, permitindo que os usuários saibam qual versão do software estão utilizando. Isso é útil para fins de compatibilidade e suporte.",
+    "raises": []
+  },
+  {
+    "name": "DOSBOX_GetDetailedVersion",
+    "kind": "function",
+    "return_type": "const char*",
+    "args": [],
+    "summary": "Retorna a versão detalhada do DOSBox.",
+    "description": "Olá, Time WaveCast! Neste contexto, eu estou retornando a versão detalhada do DOSBox. A função utiliza uma string estática que combina a versão e o hash do Git. Isso impacta a identificação da versão do software para os usuários.",
+    "raises": []
+  },
+  {
+    "name": "DOSBOX_SetLoop",
+    "kind": "function",
+    "return_type": "void",
+    "args": [
+      {
+        "name": "handler",
+        "type": "LoopHandler*"
+      }
+    ],
+    "summary": "Define o manipulador de loop do DOSBox.",
+    "description": "Olá, Time WaveCast! Aqui, eu estou definindo um manipulador de loop para o DOSBox. Essa ação permite que o sistema execute um loop específico, impactando o controle do fluxo de execução do emulador.",
+    "raises": []
+  },
+  {
+    "name": "DOSBOX_SetNormalLoop",
+    "kind": "function",
+    "return_type": "void",
+    "args": [],
+    "summary": "Define o loop normal para o DOSBox.",
+    "description": "Olá, Time WaveCast! Nesta função, eu estou configurando o loop normal do DOSBox. Isso garante que o emulador opere em seu modo padrão, impactando a experiência do usuário ao executar jogos.",
+    "raises": []
+  },
+  {
+    "name": "DOSBOX_RunMachine",
+    "kind": "function",
+    "return_type": "void",
+    "args": [],
+    "summary": "Executa a máquina DOSBox até que um shutdown seja solicitado.",
+    "description": "Olá, Time WaveCast! Aqui, eu estou executando a máquina DOSBox em um loop até que uma solicitação de desligamento seja feita. Essa ação é crucial para manter o emulador ativo enquanto não houver interrupções, impactando a continuidade da execução dos jogos.",
+    "raises": []
+  },
+  {
+    "name": "DOSBOX_RequestShutdown",
+    "kind": "function",
+    "return_type": "void",
+    "args": [],
+    "summary": "Solicita o desligamento da máquina DOSBox.",
+    "description": "Olá, Time WaveCast! Nesta função, eu estou solicitando o desligamento da máquina DOSBox. Isso altera o estado do sistema, permitindo que o emulador finalize suas operações de forma controlada, impactando a segurança dos dados.",
+    "raises": []
+  },
+  {
+    "name": "DOSBOX_IsShutdownRequested",
+    "kind": "function",
+    "return_type": "bool",
+    "args": [],
+    "summary": "Verifica se o desligamento foi solicitado.",
+    "description": "Olá, Time WaveCast! Aqui, eu estou verificando se uma solicitação de desligamento foi feita. Essa verificação é importante para o controle do fluxo de execução, impactando a resposta do emulador a comandos de desligamento.",
+    "raises": []
+  },
+  {
+    "name": "DOSBOX_UnlockSpeed",
+    "kind": "function",
+    "return_type": "void",
+    "args": [
+      {
+        "name": "pressed",
+        "type": "bool"
+      }
+    ],
+    "summary": "Desbloqueia a velocidade do emulador se pressionado.",
+    "description": "Olá, Time WaveCast! Nesta função, eu desbloqueio a velocidade do emulador quando um botão é pressionado. Isso permite que o usuário acelere a execução, impactando a performance e a jogabilidade durante a emulação.",
+    "raises": []
+  },
+  {
+    "name": "DOSBOX_SetMachineTypeFromConfig",
+    "kind": "function",
+    "return_type": "void",
+    "args": [
+      {
+        "name": "section",
+        "type": "SectionProp&"
+      }
+    ],
+    "summary": "Configura o tipo de máquina a partir da configuração.",
+    "description": "Olá, Time WaveCast! Neste contexto, eu configuro o tipo de máquina baseado nas informações da seção. Se o argumento da máquina não estiver vazio, atualizo a configuração. Isso impacta a forma como o DOSBox se comporta em relação ao tipo de máquina selecionado.",
+    "raises": []
+  },
+  {
+    "name": "remove_waitpid",
+    "kind": "function",
+    "return_type": "void",
+    "args": [
+      {
+        "name": "parameters",
+        "type": "std::vector<std::string>&"
+      }
+    ],
+    "summary": "Remove waitpid options from parameters.",
+    "description": "Olá, Time WaveCast! Neste contexto, eu removo opções de espera do vetor de parâmetros. Ao iterar sobre os parâmetros, se encontro '-waitpid' ou '--waitpid', eu os excluo, assim como o próximo elemento se for um número. Isso garante que os parâmetros estejam limpos e corretos.",
+    "raises": []
+  },
+  {
+    "name": "DOSBOX_Restart",
+    "kind": "function",
+    "return_type": "void",
+    "args": [],
+    "summary": "Restart the DOSBox with startup parameters.",
+    "description": "Olá, Time WaveCast! Aqui, eu reinicio o DOSBox utilizando os parâmetros de inicialização. Essa ação é crucial para garantir que o emulador comece com as configurações corretas, proporcionando uma experiência de uso mais fluida e sem interrupções.",
+    "raises": []
+  },
+  {
+    "name": "DOSBOX_Restart",
+    "kind": "function",
+    "return_type": "void",
+    "args": [
+      {
+        "name": "parameters",
+        "type": "std::vector<std::string>&"
+      }
+    ],
+    "summary": "Reinicia o DOSBox com novos parâmetros.",
+    "description": "Olá, Time WaveCast! Neste contexto, eu reinicio o DOSBox aplicando novos parâmetros. Isso garante que quaisquer parâmetros antigos, como --waitpid, sejam removidos e novos sejam adicionados. O impacto é que o DOSBox é reiniciado corretamente com as configurações desejadas, melhorando a experiência do usuário.",
+    "raises": []
+  },
+  {
+    "name": "dosbox_realinit",
+    "kind": "function",
+    "return_type": "void",
+    "args": [
+      {
+        "name": "section",
+        "type": "SectionProp&"
+      }
+    ],
+    "summary": "Inicializa alguns internos do dosbox.",
+    "description": "Olá, Time WaveCast! Neste contexto, eu inicializo os internos do dosbox. A ação envolve configurar o loop normal, adicionar manipuladores e definir a estratégia de falha do MCB. Isso impacta a operação do emulador, garantindo que ele funcione corretamente com as preferências do usuário.",
+    "raises": []
+  },
+  {
+    "name": "DOSBOX_Init",
+    "kind": "function",
+    "return_type": "void",
+    "args": [],
+    "summary": "Inicializa o DOSBox.",
+    "description": "Olá, Time WaveCast! Neste contexto, eu inicializo o DOSBox ao obter a seção de configuração. Em seguida, chamo várias funções de inicialização para garantir que todos os componentes do DOSBox estejam prontos para uso. Isso impacta diretamente na funcionalidade e desempenho do emulador.",
+    "raises": []
+  },
+  {
+    "name": "DOSBOX_Destroy",
+    "kind": "function",
+    "return_type": "void",
+    "args": [],
+    "summary": "Destrói todos os componentes do DOSBox.",
+    "description": "Olá, Time WaveCast! Neste contexto, eu implemento a função DOSBOX_Destroy, que é responsável por liberar todos os recursos utilizados pelo DOSBox. Ao chamar essa função, eu garanto que todos os componentes, como CMOS, TIMER e MEM, sejam destruídos corretamente, evitando vazamentos de memória.",
+    "raises": []
+  },
+  {
+    "name": "DOSBOX_InitModuleConfigsAndMessages",
+    "kind": "function",
+    "return_type": "void",
+    "args": [],
+    "summary": "Inicializa as configurações e mensagens do módulo DOSBox.",
+    "description": "Olá, Time WaveCast! Neste contexto, eu inicializo várias seções de configuração do DOSBox. Ao chamar esta função, eu garanto que todas as seções necessárias sejam configuradas corretamente, evitando inicializações duplicadas e melhorando a estabilidade do sistema. Isso impacta diretamente na experiência do usuário ao utilizar o emulador.",
+    "raises": []
+  },
+  {
+    "name": "DOSBOX_InitModules",
+    "kind": "function",
+    "return_type": "void",
+    "args": [],
+    "summary": "Inicializa todos os módulos do DOSBox.",
+    "description": "Olá, Time WaveCast! Neste contexto, eu inicializo todos os módulos necessários do DOSBox. Ao chamar esta função, asseguro que cada componente, como CPU, FPU e outros, esteja pronto para uso. Isso impacta diretamente na estabilidade e funcionalidade do emulador, garantindo que tudo funcione corretamente desde o início.",
+    "raises": []
+  },
+  {
+    "name": "DOSBOX_DestroyModules",
+    "kind": "function",
+    "return_type": "void",
+    "args": [],
+    "summary": "Destrói todos os módulos do DOSBox.",
+    "description": "Olá, Time WaveCast! Quando o DOSBox precisa liberar recursos, eu chamo a função DOSBOX_DestroyModules. Ela destrói todos os módulos, garantindo que não haja vazamentos de memória. Isso é crucial para manter a performance e a estabilidade do sistema.",
+    "raises": []
+  }
+]

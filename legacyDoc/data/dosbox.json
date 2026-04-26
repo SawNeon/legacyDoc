@@ -1,0 +1,222 @@
+[
+  {
+    "name": "DOSBOX_GetTicksDone",
+    "kind": "function",
+    "return_type": "int64_t",
+    "args": [],
+    "summary": "Retorna o número de ticks concluídos.",
+    "description": "Olá, Time WaveCast! Neste contexto, eu implemento a função que retorna o valor de 'ticks.done'. Isso me permite acessar a quantidade de ticks que já foram concluídos, o que é útil para o controle de tempo em nosso sistema. Assim, consigo monitorar o progresso de tarefas temporizadas.",
+    "raises": []
+  },
+  {
+    "name": "DOSBOX_SetTicksDone",
+    "kind": "function",
+    "return_type": "void",
+    "args": [
+      {
+        "name": "ticks_done",
+        "type": "const int64_t"
+      }
+    ],
+    "summary": "Define o número de ticks concluídos.",
+    "description": "Olá, Time WaveCast! Aqui, eu implemento uma função que define o valor de 'ticks.done' com base no argumento fornecido. Isso é importante para atualizar o estado do sistema em relação ao tempo, permitindo que eu controle melhor as operações que dependem de ticks. Dessa forma, mantenho a precisão no gerenciamento do tempo.",
+    "raises": []
+  },
+  {
+    "name": "DOSBOX_SetTicksScheduled",
+    "kind": "function",
+    "return_type": "void",
+    "args": [
+      {
+        "name": "ticks_scheduled",
+        "type": "const int64_t"
+      }
+    ],
+    "summary": "Define a quantidade de ticks agendados.",
+    "description": "Olá, Time WaveCast! Neste contexto, eu defino a quantidade de ticks agendados. A ação consiste em atribuir o valor recebido ao campo 'scheduled'. Isso impacta diretamente no controle do tempo de execução do sistema, permitindo uma melhor gestão dos ticks.",
+    "raises": []
+  },
+  {
+    "name": "increase_ticks",
+    "kind": "function",
+    "return_type": "void",
+    "args": [],
+    "summary": "Função para aumentar os ticks.",
+    "description": "Olá, Time WaveCast! Nesta função, eu aumento os ticks de acordo com o estado do sistema. Se os ticks estão bloqueados, eu os redefino para um valor específico. Caso contrário, eu calculo novos ticks com base no tempo atual. Isso garante que o sistema funcione de maneira eficiente e precisa.",
+    "raises": []
+  },
+  {
+    "name": "DOSBOX_GetVersion",
+    "kind": "function",
+    "return_type": "const char*",
+    "args": [],
+    "summary": "Retorna a versão do DOSBox.",
+    "description": "Olá, Time WaveCast! Neste contexto, eu defino a função que retorna a versão do DOSBox. Ao chamar essa função, eu forneço a versão como uma string estática. Isso permite que o usuário saiba qual versão do software está em uso.",
+    "raises": []
+  },
+  {
+    "name": "DOSBOX_GetDetailedVersion",
+    "kind": "function",
+    "return_type": "const char*",
+    "args": [],
+    "summary": "Retorna a versão detalhada do DOSBox.",
+    "description": "Olá, Time WaveCast! Neste contexto, eu estou retornando a versão detalhada do DOSBox. A função combina a versão com o hash do Git e fornece essa informação ao usuário. Isso impacta na transparência sobre a versão do software em uso.",
+    "raises": []
+  },
+  {
+    "name": "DOSBOX_SetLoop",
+    "kind": "function",
+    "return_type": "void",
+    "args": [
+      {
+        "name": "handler",
+        "type": "LoopHandler*"
+      }
+    ],
+    "summary": "Define o manipulador de loop do DOSBox.",
+    "description": "Olá, Time WaveCast! Aqui, eu estou definindo um manipulador de loop para o DOSBox. Isso permite que o sistema execute um loop específico, impactando a forma como o DOSBox processa suas operações. É uma parte crucial para o funcionamento do ciclo de execução.",
+    "raises": []
+  },
+  {
+    "name": "DOSBOX_RunMachine",
+    "kind": "function",
+    "return_type": "void",
+    "args": [],
+    "summary": "Executa a máquina DOSBox até que um desligamento seja solicitado.",
+    "description": "Olá, Time WaveCast! Nesta função, eu estou executando a máquina DOSBox em um loop até que um desligamento seja solicitado. Isso garante que a máquina funcione continuamente até que uma condição de parada seja atendida, impactando a experiência do usuário ao usar o DOSBox.",
+    "raises": []
+  },
+  {
+    "name": "DOSBOX_RequestShutdown",
+    "kind": "function",
+    "return_type": "void",
+    "args": [],
+    "summary": "Solicita o desligamento da máquina DOSBox.",
+    "description": "Olá, Time WaveCast! Aqui, eu estou solicitando o desligamento da máquina DOSBox. Essa ação altera o estado interno para indicar que um desligamento é desejado, impactando o fluxo de execução do sistema e permitindo uma parada controlada.",
+    "raises": []
+  },
+  {
+    "name": "DOSBOX_IsShutdownRequested",
+    "kind": "function",
+    "return_type": "bool",
+    "args": [],
+    "summary": "Verifica se um desligamento foi solicitado.",
+    "description": "Olá, Time WaveCast! Nesta função, eu estou verificando se um desligamento foi solicitado. Isso é útil para determinar o estado atual da máquina e impacta as decisões de controle de fluxo dentro do sistema.",
+    "raises": []
+  },
+  {
+    "name": "DOSBOX_UnlockSpeed",
+    "kind": "function",
+    "return_type": "void",
+    "args": [
+      {
+        "name": "pressed",
+        "type": "bool"
+      }
+    ],
+    "summary": "Desbloqueia a velocidade do DOSBox se pressionado.",
+    "description": "Olá, Time WaveCast! Aqui, eu estou desbloqueando a velocidade do DOSBox quando um botão é pressionado. Isso ativa o modo de avanço rápido e ajusta a taxa de ciclos do CPU, impactando a performance do emulador durante a execução.",
+    "raises": []
+  },
+  {
+    "name": "DOSBOX_SetMachineTypeFromConfig",
+    "kind": "function",
+    "return_type": "void",
+    "args": [
+      {
+        "name": "section",
+        "type": "SectionProp&"
+      }
+    ],
+    "summary": "Configura o tipo de máquina a partir da configuração.",
+    "description": "Olá, Time WaveCast! Neste contexto, eu configuro o tipo de máquina com base nas informações da seção. Se a máquina estiver definida, atualizo a configuração e ajusto o tipo de máquina conforme necessário. Isso impacta a forma como o sistema se comporta em relação ao tipo de máquina selecionado.",
+    "raises": []
+  },
+  {
+    "name": "remove_waitpid",
+    "kind": "function",
+    "return_type": "void",
+    "args": [
+      {
+        "name": "parameters",
+        "type": "std::vector<std::string>&"
+      }
+    ],
+    "summary": "Remove waitpid parameters from the list.",
+    "description": "Olá, Time WaveCast! Neste contexto, eu removo parâmetros indesejados da lista. Ação: verifico cada item e excluo '-waitpid' e seu valor associado. Impacto: isso garante que a lista de parâmetros esteja limpa e sem entradas desnecessárias.",
+    "raises": []
+  },
+  {
+    "name": "DOSBOX_Restart",
+    "kind": "function",
+    "return_type": "void",
+    "args": [
+      {
+        "name": "parameters",
+        "type": "std::vector<std::string>&"
+      }
+    ],
+    "summary": "Reinicia o DOSBox com parâmetros específicos.",
+    "description": "Olá, Time WaveCast! Neste contexto, eu reinicio o DOSBox aplicando valores de configuração. Eu removo parâmetros existentes e adiciono novos, formatando a linha de comando adequadamente. Isso garante que o DOSBox reinicie corretamente com as configurações desejadas.",
+    "raises": []
+  },
+  {
+    "name": "dosbox_realinit",
+    "kind": "function",
+    "return_type": "void",
+    "args": [
+      {
+        "name": "section",
+        "type": "SectionProp&"
+      }
+    ],
+    "summary": "Inicializa alguns internos do dosbox.",
+    "description": "Olá, Time WaveCast! Neste contexto, estou inicializando alguns componentes internos do dosbox. A ação envolve configurar o loop normal, adicionar manipuladores e definir estratégias de falha. Isso impacta a operação do dosbox, garantindo que ele funcione corretamente com as configurações do usuário.",
+    "raises": []
+  },
+  {
+    "name": "DOSBOX_Init",
+    "kind": "function",
+    "return_type": "void",
+    "args": [],
+    "summary": "Inicializa o DOSBox.",
+    "description": "Olá, Time WaveCast! Neste contexto, estou inicializando o DOSBox. Chamando várias funções de inicialização, como IO_Init e MEM_Init, eu garanto que todos os componentes necessários estão prontos para uso. Isso impacta diretamente na performance e funcionalidade do DOSBox, permitindo que ele opere corretamente.",
+    "raises": []
+  },
+  {
+    "name": "DOSBOX_Destroy",
+    "kind": "function",
+    "return_type": "void",
+    "args": [],
+    "summary": "Destrói todos os componentes do DOSBox.",
+    "description": "Olá, Time WaveCast! Neste contexto, eu estou lidando com a destruição de todos os componentes do DOSBox. Ao chamar a função, eu garanto que todos os recursos alocados sejam liberados corretamente, evitando vazamentos de memória e garantindo uma finalização limpa do sistema.",
+    "raises": []
+  },
+  {
+    "name": "DOSBOX_InitModuleConfigsAndMessages",
+    "kind": "function",
+    "return_type": "void",
+    "args": [],
+    "summary": "Inicializa as configurações e mensagens do módulo DOSBox.",
+    "description": "Olá, Time WaveCast! Neste contexto, eu inicializo várias seções de configuração do DOSBox. Ao chamar essa função, eu garanto que todas as seções necessárias sejam configuradas corretamente, evitando inicializações duplicadas e melhorando a estabilidade do sistema.",
+    "raises": []
+  },
+  {
+    "name": "DOSBOX_InitModules",
+    "kind": "function",
+    "return_type": "void",
+    "args": [],
+    "summary": "Inicializa todos os módulos do DOSBox.",
+    "description": "Olá, Time WaveCast! Neste contexto, eu inicializo todos os módulos necessários para o funcionamento do DOSBox. Ao chamar essa função, garanto que cada componente, como CPU e VGA, esteja pronto para uso, impactando diretamente a performance e a estabilidade do sistema.",
+    "raises": []
+  },
+  {
+    "name": "DOSBOX_DestroyModules",
+    "kind": "function",
+    "return_type": "void",
+    "args": [],
+    "summary": "Destrói todos os módulos do DOSBox.",
+    "description": "Olá, Time WaveCast! Neste contexto, estou lidando com a destruição de módulos do DOSBox. A função remove todos os módulos inicializados, garantindo que os recursos sejam liberados corretamente. Isso impacta na eficiência do sistema, evitando vazamentos de memória e garantindo que o ambiente esteja limpo para futuras operações.",
+    "raises": []
+  }
+]

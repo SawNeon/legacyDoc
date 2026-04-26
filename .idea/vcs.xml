@@ -2,5 +2,11 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/legacyDoc/api/tmp_repo_029ad7de" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/legacyDoc/api/tmp_repo_4adbf614" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/legacyDoc/api/tmp_repo_5a451df2" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/legacyDoc/api/tmp_repo_b95e5124" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/legacyDoc/api/tmp_repo_ccfb8666" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/legacyDoc/api/tmp_repo_ff25e89c" vcs="Git" />
   </component>
 </project>

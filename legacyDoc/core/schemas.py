@@ -1,19 +1,18 @@
-# core/schemas.py
 from pydantic import BaseModel, Field
 from typing import List, Optional
 
 class ArgDetail(BaseModel):
-    name: str = Field(description="Parameter name")
-    type: str = Field(description="Data type (ex: int, std::string)")
-    description: str = Field(description="What does this parameter do?")
+    name: str = Field(description="The name of the parameter")
+    type: str = Field(description="The technical data type (e.g., const int64_t, Bitu)")
 
-class RaiseDetail(BaseModel):
-    exception: str = Field(description="Exception Name (ex: std::invalid_argument)")
-    condition: str = Field(description="The condition that causes this exception to be thrown")
+class FunctionDetail(BaseModel):
+    name: str = Field(description="The name of the function")
+    kind: str = Field(default="function", description="The type of the entry, always 'function'")
+    return_type: str = Field(description="The return data type (e.g., void, int64_t, bool)")
+    args: List[ArgDetail] = Field(default=[], description="A list of the function's arguments")
+    summary: str = Field(description="A one-line summary in Brazilian Portuguese")
+    description: str = Field(description="A first-person explanation (Situation, Action, Impact) in Brazilian Portuguese")
+    raises: List[str] = Field(default=[], description="A list of exceptions thrown by the function (strings)")
 
-class DocstringSchema(BaseModel):
-    summary: str = Field(description="Short summary in imperative mood (max 1 line).")
-    description: str = Field(description="Detailed explanation of the business logic.")
-    args: Optional[List[ArgDetail]] = Field(default=[])
-    returns: str = Field(description="Return type and description. Use 'None' if void.")
-    raises: Optional[List[RaiseDetail]] = Field(default=[])
+class FileDocumentation(BaseModel):
+    functions: List[FunctionDetail] = Field(description="An array containing all functions extracted from the file")

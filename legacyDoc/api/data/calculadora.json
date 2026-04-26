@@ -1,0 +1,188 @@
+[
+  {
+    "name": "sumar",
+    "kind": "function",
+    "return_type": "double",
+    "args": [
+      {
+        "name": "num1",
+        "type": "double"
+      },
+      {
+        "name": "num2",
+        "type": "double"
+      }
+    ],
+    "summary": "Soma dois números.",
+    "description": "Olá, Time WaveCast! Nesta função, eu recebo dois números como entrada e realizo a soma deles. O impacto é que posso retornar o resultado da adição para ser utilizado em outras partes do programa.",
+    "raises": []
+  },
+  {
+    "name": "restar",
+    "kind": "function",
+    "return_type": "double",
+    "args": [
+      {
+        "name": "num1",
+        "type": "double"
+      },
+      {
+        "name": "num2",
+        "type": "double"
+      }
+    ],
+    "summary": "Subtrai dois números.",
+    "description": "Olá, Time WaveCast! Aqui, eu pego dois números e calculo a diferença entre eles. O resultado é útil para operações que exigem subtração em cálculos posteriores.",
+    "raises": []
+  },
+  {
+    "name": "multiplicar",
+    "kind": "function",
+    "return_type": "double",
+    "args": [
+      {
+        "name": "a",
+        "type": "double"
+      },
+      {
+        "name": "b",
+        "type": "double"
+      }
+    ],
+    "summary": "Multiplica dois números.",
+    "description": "Olá, Time WaveCast! Nesta função, eu multiplico dois números fornecidos. O resultado da multiplicação pode ser utilizado em cálculos mais complexos, aumentando a funcionalidade do programa.",
+    "raises": []
+  },
+  {
+    "name": "dividir",
+    "kind": "function",
+    "return_type": "double",
+    "args": [
+      {
+        "name": "a",
+        "type": "double"
+      },
+      {
+        "name": "b",
+        "type": "double"
+      }
+    ],
+    "summary": "Divide dois números.",
+    "description": "Olá, Time WaveCast! Aqui, eu realizo a divisão de dois números. Se o denominador for zero, eu informo um erro, garantindo que o programa não quebre e continue funcionando corretamente.",
+    "raises": []
+  },
+  {
+    "name": "potencia",
+    "kind": "function",
+    "return_type": "double",
+    "args": [
+      {
+        "name": "base",
+        "type": "double"
+      },
+      {
+        "name": "exponente",
+        "type": "double"
+      }
+    ],
+    "summary": "Calcula a potência de um número.",
+    "description": "Olá, Time WaveCast! Nesta função, eu calculo a potência de uma base elevada a um expoente. Isso é útil em diversas aplicações matemáticas e científicas.",
+    "raises": []
+  },
+  {
+    "name": "raizCuadrada",
+    "kind": "function",
+    "return_type": "double",
+    "args": [
+      {
+        "name": "numero",
+        "type": "double"
+      }
+    ],
+    "summary": "Calcula a raiz quadrada de um número.",
+    "description": "Olá, Time WaveCast! Aqui, eu calculo a raiz quadrada de um número fornecido. Essa operação é fundamental em muitos cálculos matemáticos e pode ser aplicada em várias situações.",
+    "raises": []
+  },
+  {
+    "name": "logaritmo",
+    "kind": "function",
+    "return_type": "double",
+    "args": [
+      {
+        "name": "argumento",
+        "type": "double"
+      }
+    ],
+    "summary": "Calcula o logaritmo de um número.",
+    "description": "Olá, Time WaveCast! Nesta função, eu calculo o logaritmo na base 10 de um número. Isso é essencial em matemática e ciências para resolver equações logarítmicas.",
+    "raises": []
+  },
+  {
+    "name": "logaritmoNatural",
+    "kind": "function",
+    "return_type": "double",
+    "args": [
+      {
+        "name": "antilogaritmo",
+        "type": "double"
+      }
+    ],
+    "summary": "Calcula o logaritmo natural de um número.",
+    "description": "Olá, Time WaveCast! Aqui, eu calculo o logaritmo natural de um número. Essa função é frequentemente utilizada em matemática e estatística para análises mais profundas.",
+    "raises": []
+  },
+  {
+    "name": "sumar",
+    "kind": "function",
+    "return_type": "double",
+    "args": [
+      {
+        "name": "num1",
+        "type": "double"
+      },
+      {
+        "name": "num2",
+        "type": "double"
+      }
+    ],
+    "summary": "Função que soma dois números.",
+    "description": "Olá, Time WaveCast! Esta função é utilizada para somar dois números. Ao receber dois valores, ela calcula a soma e retorna o resultado. Isso é útil para operações matemáticas básicas.",
+    "raises": []
+  },
+  {
+    "name": "restar",
+    "kind": "function",
+    "return_type": "double",
+    "args": [
+      {
+        "name": "num1",
+        "type": "double"
+      },
+      {
+        "name": "num2",
+        "type": "double"
+      }
+    ],
+    "summary": "Função que subtrai dois números.",
+    "description": "Olá, Time WaveCast! Esta função realiza a subtração de dois números. Ela recebe dois valores e retorna a diferença entre eles. Isso é importante para operações matemáticas simples.",
+    "raises": []
+  },
+  {
+    "name": "potencia",
+    "kind": "function",
+    "return_type": "double",
+    "args": [
+      {
+        "name": "base",
+        "type": "double"
+      },
+      {
+        "name": "exponente",
+        "type": "double"
+      }
+    ],
+    "summary": "Função que calcula a potência de um número.",
+    "description": "Olá, Time WaveCast! Esta função calcula a potência de um número com base em um expoente. Ao receber a base e o expoente, ela retorna o resultado da operação. Isso é essencial para cálculos exponenciais.",
+    "raises": []
+  }
+]
