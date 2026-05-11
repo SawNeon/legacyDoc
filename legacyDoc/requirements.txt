@@ -1,8 +1,14 @@
+fastapi
+uvicorn
+PyJWT
+pwdlib[argon2]
+python-dotenv
+pydantic
 langgraph
 langchain-openai
 tree-sitter
 tree-sitter-cpp
 neo4j
 qdrant-client
-python-dotenv
-pydantic
+GitPython
+fpdf2
