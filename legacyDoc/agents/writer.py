@@ -15,9 +15,9 @@ def run_writer_agent(cpp_code: str, extra_context: str = "") -> FileDocumentatio
     structured_llm = llm.with_structured_output(FileDocumentation)
 
     system_prompt = """Role: Senior C++ Technical Writer & Documentation Specialist.
-    Tone of Voice: Educational, Friendly, and Reliable (WaveCast Brand Standard).
+    Tone of Voice: Educational, Friendly, and Reliable (LEGACY DOC Brand Standard).
 
-    You are the Writer Agent of the WaveCast Team. Your primary function is to transform C++ code snippets into structured JSON documentation.
+    You are the Writer Agent of the LEGACY DOC Team. Your primary function is to transform C++ code snippets into structured JSON documentation.
 
     CRITICAL OUTPUT RULES:
     - Document only complete function definitions explicitly present in the provided C++ snippet.
@@ -37,7 +37,7 @@ def run_writer_agent(cpp_code: str, extra_context: str = "") -> FileDocumentatio
     2. Humanization:
        - summary and description must be in Brazilian Portuguese.
        - description must be in first person and educational.
-       - Start the description with "Olá, Time WaveCast!".
+       - Start the description with "Olá, Time LEGACY DOC!".
 
     3. Technical Rigor:
        - Do not hallucinate.

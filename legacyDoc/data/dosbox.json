@@ -2,221 +2,971 @@
   {
     "name": "DOSBOX_GetTicksDone",
     "kind": "function",
+    "signature": "int64_t DOSBOX_GetTicksDone()",
     "return_type": "int64_t",
+    "return_description": "Retorna o número de ticks concluídos.",
     "args": [],
     "summary": "Retorna o número de ticks concluídos.",
-    "description": "Olá, Time WaveCast! Neste contexto, eu implemento a função que retorna o valor de 'ticks.done'. Isso me permite acessar a quantidade de ticks que já foram concluídos, o que é útil para o controle de tempo em nosso sistema. Assim, consigo monitorar o progresso de tarefas temporizadas.",
+    "description": "Olá, Time LEGACY DOC! Esta função é utilizada para obter o número total de ticks que foram concluídos. Ao chamá-la, eu consigo acessar a variável 'done' dentro da estrutura 'ticks', o que é útil para monitorar o progresso do tempo no emulador.",
     "raises": []
   },
   {
     "name": "DOSBOX_SetTicksDone",
     "kind": "function",
+    "signature": "void DOSBOX_SetTicksDone(const int64_t ticks_done)",
     "return_type": "void",
+    "return_description": "Não retorna valor.",
     "args": [
       {
         "name": "ticks_done",
-        "type": "const int64_t"
+        "type": "int64_t",
+        "description": "Número de ticks a serem definidos como concluídos."
       }
     ],
     "summary": "Define o número de ticks concluídos.",
-    "description": "Olá, Time WaveCast! Aqui, eu implemento uma função que define o valor de 'ticks.done' com base no argumento fornecido. Isso é importante para atualizar o estado do sistema em relação ao tempo, permitindo que eu controle melhor as operações que dependem de ticks. Dessa forma, mantenho a precisão no gerenciamento do tempo.",
+    "description": "Olá, Time LEGACY DOC! Esta função permite que eu defina o número de ticks que foram concluídos. Ao passar um valor para 'ticks_done', eu atualizo a variável 'done' na estrutura 'ticks', ajudando a gerenciar o tempo no emulador.",
     "raises": []
   },
   {
     "name": "DOSBOX_SetTicksScheduled",
     "kind": "function",
+    "signature": "void DOSBOX_SetTicksScheduled(const int64_t ticks_scheduled)",
     "return_type": "void",
+    "return_description": null,
     "args": [
       {
         "name": "ticks_scheduled",
-        "type": "const int64_t"
+        "type": "int64_t",
+        "description": "O número de ticks agendados."
       }
     ],
-    "summary": "Define a quantidade de ticks agendados.",
-    "description": "Olá, Time WaveCast! Neste contexto, eu defino a quantidade de ticks agendados. A ação consiste em atribuir o valor recebido ao campo 'scheduled'. Isso impacta diretamente no controle do tempo de execução do sistema, permitindo uma melhor gestão dos ticks.",
+    "summary": "Define os ticks agendados.",
+    "description": "Olá, Time LEGACY DOC! Neste contexto, eu defino o número de ticks agendados. Isso é importante para garantir que o sistema mantenha o controle do tempo de execução, permitindo uma gestão eficiente dos ciclos de processamento.",
+    "raises": []
+  },
+  {
+    "name": "normal_loop",
+    "kind": "function",
+    "signature": "static Bitu normal_loop()",
+    "return_type": "Bitu",
+    "return_description": "Retorna um valor Bitu indicando o resultado da execução do loop.",
+    "args": [],
+    "summary": "Executa um loop normal para processamento.",
+    "description": "Olá, Time LEGACY DOC! Aqui, eu executo um loop contínuo que processa eventos e chamadas de função. Isso é crucial para a operação do sistema, pois garante que as tarefas sejam executadas em tempo real, mantendo a fluidez do emulador.",
     "raises": []
   },
   {
     "name": "increase_ticks",
     "kind": "function",
+    "signature": "static void increase_ticks()",
     "return_type": "void",
+    "return_description": null,
     "args": [],
-    "summary": "Função para aumentar os ticks.",
-    "description": "Olá, Time WaveCast! Nesta função, eu aumento os ticks de acordo com o estado do sistema. Se os ticks estão bloqueados, eu os redefino para um valor específico. Caso contrário, eu calculo novos ticks com base no tempo atual. Isso garante que o sistema funcione de maneira eficiente e precisa.",
+    "summary": "Aumenta os ticks para o emulador.",
+    "description": "Olá, Time LEGACY DOC! Neste contexto, eu aumento os ticks do emulador. Ao verificar se os ticks estão bloqueados, eu ajusto o valor de ticks.remain e reinicio algumas variáveis. Isso garante que o emulador funcione corretamente durante a execução, mantendo a contagem de ticks precisa.",
+    "raises": []
+  },
+  {
+    "name": "GetTicks",
+    "kind": "function",
+    "signature": "auto GetTicks()",
+    "return_type": "auto",
+    "return_description": "Retorna o número atual de ticks.",
+    "args": [],
+    "summary": "Retorna o número atual de ticks.",
+    "description": "Olá, Time LEGACY DOC! Esta função me fornece o número atual de ticks, que é essencial para o controle do tempo no emulador. Usando esse valor, eu posso ajustar a lógica de emulação e garantir que os ciclos de CPU sejam gerenciados corretamente, impactando a performance do emulador.",
+    "raises": []
+  },
+  {
+    "name": "GetTicksUs",
+    "kind": "function",
+    "signature": "auto GetTicksUs()",
+    "return_type": "auto",
+    "return_description": "Retorna o número atual de ticks em microsegundos.",
+    "args": [],
+    "summary": "Retorna o número atual de ticks em microsegundos.",
+    "description": "Olá, Time LEGACY DOC! Aqui, eu obtenho o número de ticks em microsegundos, o que é crucial para cálculos de tempo mais precisos. Isso me permite fazer ajustes finos na emulação, garantindo que a experiência do usuário seja suave e responsiva, especialmente em modos de velocidade variável.",
+    "raises": []
+  },
+  {
+    "name": "TIMER_AddTick",
+    "kind": "function",
+    "signature": "void TIMER_AddTick()",
+    "return_type": "void",
+    "return_description": null,
+    "args": [],
+    "summary": "Adiciona um tick ao temporizador.",
+    "description": "Olá, Time LEGACY DOC! Esta função é responsável por adicionar um tick ao temporizador do emulador. Ao chamar essa função, eu consigo manter a contagem de tempo atualizada, o que é vital para a sincronização das operações do emulador e para garantir que os eventos ocorram no momento certo.",
+    "raises": []
+  },
+  {
+    "name": "GetTicksDiff",
+    "kind": "function",
+    "signature": "auto GetTicksDiff(auto start, auto end)",
+    "return_type": "auto",
+    "return_description": "Calcula a diferença entre dois ticks.",
+    "args": [
+      {
+        "name": "start",
+        "type": "auto",
+        "description": "O valor inicial dos ticks."
+      },
+      {
+        "name": "end",
+        "type": "auto",
+        "description": "O valor final dos ticks."
+      }
+    ],
+    "summary": "Calcula a diferença entre dois ticks.",
+    "description": "Olá, Time LEGACY DOC! Aqui, eu calculo a diferença entre dois valores de ticks. Isso é importante para medir o tempo decorrido entre eventos no emulador, permitindo que eu faça ajustes necessários para a sincronização e a performance geral do sistema.",
+    "raises": []
+  },
+  {
+    "name": "CPU_CycleAutoAdjust",
+    "kind": "function",
+    "signature": "void CPU_CycleAutoAdjust()",
+    "return_type": "void",
+    "return_description": null,
+    "args": [],
+    "summary": "Ajusta automaticamente os ciclos da CPU.",
+    "description": "Olá, Time LEGACY DOC! Esta função ajusta automaticamente os ciclos da CPU com base nas condições atuais do emulador. Isso garante que a emulação funcione de maneira eficiente e responsiva, adaptando-se às necessidades do sistema e melhorando a experiência do usuário.",
+    "raises": []
+  },
+  {
+    "name": "CPU_CycleMax",
+    "kind": "function",
+    "signature": "void CPU_CycleMax()",
+    "return_type": "void",
+    "return_description": null,
+    "args": [],
+    "summary": "Define o número máximo de ciclos da CPU.",
+    "description": "Olá, Time LEGACY DOC! Aqui, eu defino o número máximo de ciclos que a CPU pode executar. Isso é fundamental para evitar sobrecarga no sistema e garantir que o emulador funcione dentro de limites seguros, proporcionando uma experiência de emulação estável e controlada.",
+    "raises": []
+  },
+  {
+    "name": "CPU_CyclePercUsed",
+    "kind": "function",
+    "signature": "float CPU_CyclePercUsed()",
+    "return_type": "float",
+    "return_description": "Retorna a porcentagem de ciclos da CPU utilizados.",
+    "args": [],
+    "summary": "Retorna a porcentagem de ciclos da CPU utilizados.",
+    "description": "Olá, Time LEGACY DOC! Esta função me fornece a porcentagem de ciclos da CPU que estão sendo utilizados. Isso é crucial para monitorar a performance do emulador e fazer ajustes conforme necessário, garantindo que o sistema opere de maneira eficiente e responsiva.",
+    "raises": []
+  },
+  {
+    "name": "CPU_IODelayRemoved",
+    "kind": "function",
+    "signature": "void CPU_IODelayRemoved()",
+    "return_type": "void",
+    "return_description": null,
+    "args": [],
+    "summary": "Remove o atraso de I/O da CPU.",
+    "description": "Olá, Time LEGACY DOC! Aqui, eu removo o atraso de I/O da CPU, o que é importante para melhorar a performance do emulador. Isso ajuda a garantir que as operações de entrada e saída sejam processadas de forma mais rápida e eficiente, resultando em uma experiência de usuário mais fluida.",
+    "raises": []
+  },
+  {
+    "name": "E_Exit",
+    "kind": "function",
+    "signature": "void E_Exit()",
+    "return_type": "void",
+    "return_description": null,
+    "args": [],
+    "summary": "Finaliza a execução do emulador.",
+    "description": "Olá, Time LEGACY DOC! Esta função encerra a execução do emulador de forma controlada. Ao chamar essa função, eu asseguro que todos os recursos sejam liberados corretamente, evitando vazamentos de memória e garantindo que o sistema esteja em um estado limpo após a finalização.",
+    "raises": []
+  },
+  {
+    "name": "LOG",
+    "kind": "function",
+    "signature": "void LOG(const char* message)",
+    "return_type": "void",
+    "return_description": null,
+    "args": [
+      {
+        "name": "message",
+        "type": "const char*",
+        "description": "A mensagem a ser registrada."
+      }
+    ],
+    "summary": "Registra uma mensagem no log.",
+    "description": "Olá, Time LEGACY DOC! Aqui, eu registro uma mensagem no log do emulador. Isso é essencial para monitorar eventos e erros durante a execução, permitindo que eu faça diagnósticos e melhore a qualidade do emulador com base nas informações coletadas.",
+    "raises": []
+  },
+  {
+    "name": "MAPPER_AddHandler",
+    "kind": "function",
+    "signature": "void MAPPER_AddHandler()",
+    "return_type": "void",
+    "return_description": null,
+    "args": [],
+    "summary": "Adiciona um manipulador ao mapeador.",
+    "description": "Olá, Time LEGACY DOC! Esta função adiciona um manipulador ao mapeador do emulador. Isso é importante para garantir que os eventos sejam tratados corretamente, permitindo uma interação adequada entre o hardware virtualizado e o software emulado, melhorando a funcionalidade geral do sistema.",
+    "raises": []
+  },
+  {
+    "name": "GFX_RequestExit",
+    "kind": "function",
+    "signature": "void GFX_RequestExit()",
+    "return_type": "void",
+    "return_description": null,
+    "args": [],
+    "summary": "Solicita a saída do sistema gráfico.",
+    "description": "Olá, Time LEGACY DOC! Aqui, eu solicito a saída do sistema gráfico do emulador. Isso é fundamental para garantir que todos os recursos gráficos sejam liberados corretamente ao encerrar o emulador, evitando problemas de desempenho e garantindo uma finalização limpa.",
+    "raises": []
+  },
+  {
+    "name": "MSG_LoadMessages",
+    "kind": "function",
+    "signature": "void MSG_LoadMessages()",
+    "return_type": "void",
+    "return_description": null,
+    "args": [],
+    "summary": "Carrega mensagens para o emulador.",
+    "description": "Olá, Time LEGACY DOC! Esta função carrega mensagens necessárias para o emulador. Isso é essencial para garantir que o sistema tenha todas as informações necessárias para operar corretamente, melhorando a experiência do usuário e a funcionalidade do emulador.",
+    "raises": []
+  },
+  {
+    "name": "GFX_GetPresentationMode",
+    "kind": "function",
+    "signature": "PresentationMode GFX_GetPresentationMode()",
+    "return_type": "PresentationMode",
+    "return_description": "Retorna o modo de apresentação atual.",
+    "args": [],
+    "summary": "Retorna o modo de apresentação atual.",
+    "description": "Olá, Time LEGACY DOC! Aqui, eu obtenho o modo de apresentação atual do sistema gráfico. Isso é importante para determinar como os frames devem ser apresentados, garantindo que a emulação funcione de maneira eficiente e que a experiência do usuário seja otimizada.",
+    "raises": []
+  },
+  {
+    "name": "GFX_MaybePresentFrame",
+    "kind": "function",
+    "signature": "void GFX_MaybePresentFrame()",
+    "return_type": "void",
+    "return_description": null,
+    "args": [],
+    "summary": "Apresenta um frame, se necessário.",
+    "description": "Olá, Time LEGACY DOC! Esta função apresenta um frame do emulador, se necessário. Isso é crucial para garantir que a saída visual do emulador seja atualizada corretamente, proporcionando uma experiência de usuário suave e responsiva durante a emulação.",
+    "raises": []
+  },
+  {
+    "name": "GFX_PollAndHandleEvents",
+    "kind": "function",
+    "signature": "bool GFX_PollAndHandleEvents()",
+    "return_type": "bool",
+    "return_description": "Verifica e trata eventos do sistema gráfico.",
+    "args": [],
+    "summary": "Verifica e trata eventos do sistema gráfico.",
+    "description": "Olá, Time LEGACY DOC! Aqui, eu verifico e trato eventos do sistema gráfico. Isso é fundamental para garantir que a interação do usuário com o emulador seja fluida e responsiva, permitindo que eu reaja a entradas e eventos em tempo real.",
+    "raises": []
+  },
+  {
+    "name": "ticks.locked",
+    "kind": "variable",
+    "signature": "bool ticks.locked",
+    "return_type": "bool",
+    "return_description": "Indica se os ticks estão bloqueados.",
+    "args": [],
+    "summary": "Indica se os ticks estão bloqueados.",
+    "description": "Olá, Time LEGACY DOC! Esta variável indica se os ticks do emulador estão bloqueados. Isso é importante para controlar o fluxo de emulação e garantir que o sistema funcione corretamente, especialmente em modos de velocidade variável.",
+    "raises": []
+  },
+  {
+    "name": "ticks.remain",
+    "kind": "variable",
+    "signature": "int ticks.remain",
+    "return_type": "int",
+    "return_description": "Número de ticks restantes.",
+    "args": [],
+    "summary": "Número de ticks restantes.",
+    "description": "Olá, Time LEGACY DOC! Esta variável armazena o número de ticks restantes para a emulação. Isso é crucial para gerenciar o tempo e a performance do emulador, garantindo que os ciclos de CPU sejam executados de forma adequada e eficiente.",
+    "raises": []
+  },
+  {
+    "name": "ticks.last",
+    "kind": "variable",
+    "signature": "auto ticks.last",
+    "return_type": "auto",
+    "return_description": "Último valor de ticks.",
+    "args": [],
+    "summary": "Último valor de ticks.",
+    "description": "Olá, Time LEGACY DOC! Esta variável armazena o último valor de ticks registrado. Isso é importante para calcular diferenças de tempo e garantir que a emulação funcione de maneira precisa e sincronizada, melhorando a experiência do usuário.",
+    "raises": []
+  },
+  {
+    "name": "ticks.added",
+    "kind": "variable",
+    "signature": "int ticks.added",
+    "return_type": "int",
+    "return_description": "Número de ticks adicionados.",
+    "args": [],
+    "summary": "Número de ticks adicionados.",
+    "description": "Olá, Time LEGACY DOC! Esta variável armazena o número de ticks que foram adicionados. Isso é fundamental para o controle do tempo no emulador, permitindo que eu ajuste a lógica de emulação conforme necessário e mantenha a performance ideal.",
+    "raises": []
+  },
+  {
+    "name": "ticks.done",
+    "kind": "variable",
+    "signature": "int ticks.done",
+    "return_type": "int",
+    "return_description": "Número de ticks concluídos.",
+    "args": [],
+    "summary": "Número de ticks concluídos.",
+    "description": "Olá, Time LEGACY DOC! Esta variável armazena o número de ticks que foram concluídos. Isso é importante para monitorar o progresso da emulação e garantir que todas as operações sejam executadas dentro dos limites de tempo estabelecidos, melhorando a eficiência do sistema.",
+    "raises": []
+  },
+  {
+    "name": "ticks.scheduled",
+    "kind": "variable",
+    "signature": "int ticks.scheduled",
+    "return_type": "int",
+    "return_description": "Número de ticks agendados.",
+    "args": [],
+    "summary": "Número de ticks agendados.",
+    "description": "Olá, Time LEGACY DOC! Esta variável armazena o número de ticks que foram agendados. Isso é crucial para gerenciar o tempo de execução do emulador e garantir que as operações sejam realizadas de forma oportuna, impactando a performance geral do sistema.",
+    "raises": []
+  },
+  {
+    "name": "MicrosInMillisecond",
+    "kind": "variable",
+    "signature": "int MicrosInMillisecond",
+    "return_type": "int",
+    "return_description": "Número de microssegundos em um milissegundo.",
+    "args": [],
+    "summary": "Número de microssegundos em um milissegundo.",
+    "description": "Olá, Time LEGACY DOC! Esta variável define o número de microssegundos em um milissegundo. Isso é importante para conversões de tempo e cálculos precisos dentro do emulador, garantindo que a lógica de tempo funcione corretamente e que a emulação seja precisa.",
+    "raises": []
+  },
+  {
+    "name": "auto_cpu_cycles_min",
+    "kind": "variable",
+    "signature": "constexpr auto auto_cpu_cycles_min",
+    "return_type": "auto",
+    "return_description": "Número mínimo de ciclos de CPU.",
+    "args": [],
+    "summary": "Número mínimo de ciclos de CPU.",
+    "description": "Olá, Time LEGACY DOC! Esta variável define o número mínimo de ciclos de CPU que devem ser utilizados. Isso é fundamental para garantir que o emulador opere de maneira eficiente e responsiva, evitando subutilização dos recursos disponíveis.",
     "raises": []
   },
   {
     "name": "DOSBOX_GetVersion",
     "kind": "function",
+    "signature": "const char* DOSBOX_GetVersion() noexcept",
     "return_type": "const char*",
+    "return_description": "Returns the version of DOSBox as a string.",
     "args": [],
     "summary": "Retorna a versão do DOSBox.",
-    "description": "Olá, Time WaveCast! Neste contexto, eu defino a função que retorna a versão do DOSBox. Ao chamar essa função, eu forneço a versão como uma string estática. Isso permite que o usuário saiba qual versão do software está em uso.",
+    "description": "Olá, Time LEGACY DOC! Esta função é utilizada para obter a versão atual do DOSBox. Ao chamá-la, eu retorno uma string que representa a versão, permitindo que os usuários saibam qual versão do emulador estão utilizando. Isso é importante para garantir que todos estejam cientes das atualizações e melhorias.",
     "raises": []
   },
   {
     "name": "DOSBOX_GetDetailedVersion",
     "kind": "function",
+    "signature": "const char* DOSBOX_GetDetailedVersion() noexcept",
     "return_type": "const char*",
+    "return_description": "Returns the detailed version of DOSBox as a string.",
     "args": [],
     "summary": "Retorna a versão detalhada do DOSBox.",
-    "description": "Olá, Time WaveCast! Neste contexto, eu estou retornando a versão detalhada do DOSBox. A função combina a versão com o hash do Git e fornece essa informação ao usuário. Isso impacta na transparência sobre a versão do software em uso.",
+    "description": "Olá, Time LEGACY DOC! Neste contexto, eu defino a função que retorna a versão detalhada do DOSBox. Ao chamar essa função, você obtém uma string que inclui a versão e o hash do Git, permitindo que você saiba exatamente qual versão do software está em uso.",
     "raises": []
   },
   {
     "name": "DOSBOX_SetLoop",
     "kind": "function",
+    "signature": "void DOSBOX_SetLoop(LoopHandler* handler)",
     "return_type": "void",
+    "return_description": null,
     "args": [
       {
         "name": "handler",
-        "type": "LoopHandler*"
+        "type": "LoopHandler*",
+        "description": "Um ponteiro para o manipulador de loop."
       }
     ],
-    "summary": "Define o manipulador de loop do DOSBox.",
-    "description": "Olá, Time WaveCast! Aqui, eu estou definindo um manipulador de loop para o DOSBox. Isso permite que o sistema execute um loop específico, impactando a forma como o DOSBox processa suas operações. É uma parte crucial para o funcionamento do ciclo de execução.",
+    "summary": "Define o manipulador de loop para DOSBox.",
+    "description": "Olá, Time LEGACY DOC! Aqui, eu implemento a função que define um novo manipulador de loop para o DOSBox. Isso permite que você altere a lógica de execução do loop principal, impactando como o emulador processa suas operações.",
+    "raises": []
+  },
+  {
+    "name": "DOSBOX_SetNormalLoop",
+    "kind": "function",
+    "signature": "void DOSBOX_SetNormalLoop()",
+    "return_type": "void",
+    "return_description": null,
+    "args": [],
+    "summary": "Define o loop normal para DOSBox.",
+    "description": "Olá, Time LEGACY DOC! Nesta função, eu restauro o loop normal do DOSBox. Isso é útil para retornar ao comportamento padrão do emulador, garantindo que ele funcione como esperado após modificações.",
     "raises": []
   },
   {
     "name": "DOSBOX_RunMachine",
     "kind": "function",
+    "signature": "void DOSBOX_RunMachine()",
     "return_type": "void",
+    "return_description": null,
     "args": [],
     "summary": "Executa a máquina DOSBox até que um desligamento seja solicitado.",
-    "description": "Olá, Time WaveCast! Nesta função, eu estou executando a máquina DOSBox em um loop até que um desligamento seja solicitado. Isso garante que a máquina funcione continuamente até que uma condição de parada seja atendida, impactando a experiência do usuário ao usar o DOSBox.",
+    "description": "Olá, Time LEGACY DOC! Aqui, eu implemento a função que executa a máquina DOSBox. Enquanto o loop principal não solicitar um desligamento, a máquina continua a rodar, permitindo que o emulador funcione continuamente até que uma condição de parada seja atendida.",
     "raises": []
   },
   {
     "name": "DOSBOX_RequestShutdown",
     "kind": "function",
+    "signature": "void DOSBOX_RequestShutdown()",
     "return_type": "void",
+    "return_description": null,
     "args": [],
     "summary": "Solicita o desligamento da máquina DOSBox.",
-    "description": "Olá, Time WaveCast! Aqui, eu estou solicitando o desligamento da máquina DOSBox. Essa ação altera o estado interno para indicar que um desligamento é desejado, impactando o fluxo de execução do sistema e permitindo uma parada controlada.",
+    "description": "Olá, Time LEGACY DOC! Nesta função, eu marco a máquina DOSBox para desligamento. Isso é importante para interromper a execução de forma controlada, permitindo que o sistema finalize suas operações de maneira segura.",
     "raises": []
   },
   {
     "name": "DOSBOX_IsShutdownRequested",
     "kind": "function",
+    "signature": "bool DOSBOX_IsShutdownRequested()",
     "return_type": "bool",
+    "return_description": "Retorna verdadeiro se um desligamento foi solicitado.",
     "args": [],
     "summary": "Verifica se um desligamento foi solicitado.",
-    "description": "Olá, Time WaveCast! Nesta função, eu estou verificando se um desligamento foi solicitado. Isso é útil para determinar o estado atual da máquina e impacta as decisões de controle de fluxo dentro do sistema.",
+    "description": "Olá, Time LEGACY DOC! Aqui, eu implemento a função que verifica se um desligamento da máquina foi solicitado. Isso é útil para determinar se o emulador deve continuar executando ou se deve encerrar suas operações.",
     "raises": []
   },
   {
     "name": "DOSBOX_UnlockSpeed",
     "kind": "function",
+    "signature": "static void DOSBOX_UnlockSpeed(bool pressed)",
     "return_type": "void",
+    "return_description": null,
     "args": [
       {
         "name": "pressed",
-        "type": "bool"
+        "type": "bool",
+        "description": "Indica se a tecla de desbloqueio foi pressionada."
       }
     ],
-    "summary": "Desbloqueia a velocidade do DOSBox se pressionado.",
-    "description": "Olá, Time WaveCast! Aqui, eu estou desbloqueando a velocidade do DOSBox quando um botão é pressionado. Isso ativa o modo de avanço rápido e ajusta a taxa de ciclos do CPU, impactando a performance do emulador durante a execução.",
-    "raises": []
-  },
-  {
-    "name": "DOSBOX_SetMachineTypeFromConfig",
-    "kind": "function",
-    "return_type": "void",
-    "args": [
-      {
-        "name": "section",
-        "type": "SectionProp&"
-      }
-    ],
-    "summary": "Configura o tipo de máquina a partir da configuração.",
-    "description": "Olá, Time WaveCast! Neste contexto, eu configuro o tipo de máquina com base nas informações da seção. Se a máquina estiver definida, atualizo a configuração e ajusto o tipo de máquina conforme necessário. Isso impacta a forma como o sistema se comporta em relação ao tipo de máquina selecionado.",
+    "summary": "Desbloqueia a velocidade do emulador se a tecla for pressionada.",
+    "description": "Olá, Time LEGACY DOC! Nesta função, eu gerencio o desbloqueio da velocidade do emulador quando a tecla correspondente é pressionada. Isso permite que o emulador acelere suas operações, impactando a experiência do usuário durante a execução.",
     "raises": []
   },
   {
     "name": "remove_waitpid",
     "kind": "function",
+    "signature": "static void remove_waitpid(std::vector<std::string>& parameters)",
     "return_type": "void",
+    "return_description": null,
     "args": [
       {
         "name": "parameters",
-        "type": "std::vector<std::string>&"
+        "type": "std::vector<std::string>&",
+        "description": "Uma referência a um vetor de strings que contém os parâmetros."
       }
     ],
-    "summary": "Remove waitpid parameters from the list.",
-    "description": "Olá, Time WaveCast! Neste contexto, eu removo parâmetros indesejados da lista. Ação: verifico cada item e excluo '-waitpid' e seu valor associado. Impacto: isso garante que a lista de parâmetros esteja limpa e sem entradas desnecessárias.",
+    "summary": "Remove parâmetros de espera do vetor.",
+    "description": "Olá, Time LEGACY DOC! Neste contexto, eu removo os parâmetros '-waitpid' ou '--waitpid' de um vetor de strings. Ao fazer isso, garanto que o vetor não contenha esses parâmetros indesejados, melhorando a clareza e a funcionalidade do código. Isso é útil para evitar comportamentos inesperados durante a execução.",
     "raises": []
   },
   {
     "name": "DOSBOX_Restart",
     "kind": "function",
+    "signature": "void DOSBOX_Restart()",
     "return_type": "void",
+    "return_description": null,
+    "args": [],
+    "summary": "Reinicia o DOSBox.",
+    "description": "Olá, Time LEGACY DOC! Esta função reinicia o DOSBox, permitindo que o emulador comece novamente. Isso é importante para garantir que as configurações e o estado do emulador sejam redefinidos, proporcionando uma experiência limpa e sem erros para o usuário. É uma parte essencial do ciclo de vida do emulador.",
+    "raises": []
+  },
+  {
+    "name": "DOSBOX_Restart",
+    "kind": "function",
+    "signature": "void DOSBOX_Restart(std::vector<std::string>& parameters)",
+    "return_type": "void",
+    "return_description": null,
     "args": [
       {
         "name": "parameters",
-        "type": "std::vector<std::string>&"
+        "type": "std::vector<std::string>&",
+        "description": "Os parâmetros a serem aplicados na reinicialização."
       }
     ],
-    "summary": "Reinicia o DOSBox com parâmetros específicos.",
-    "description": "Olá, Time WaveCast! Neste contexto, eu reinicio o DOSBox aplicando valores de configuração. Eu removo parâmetros existentes e adiciono novos, formatando a linha de comando adequadamente. Isso garante que o DOSBox reinicie corretamente com as configurações desejadas.",
+    "summary": "Reinicia o DOSBox com os parâmetros fornecidos.",
+    "description": "Olá, Time LEGACY DOC! Neste contexto, eu reinicio o DOSBox aplicando os parâmetros fornecidos. Isso é importante para garantir que as configurações corretas sejam usadas durante a reinicialização. Ao fazer isso, eu removo parâmetros indesejados e formo a linha de comando adequada para o sistema operacional.",
+    "raises": []
+  },
+  {
+    "name": "remove_waitpid",
+    "kind": "function",
+    "signature": "void remove_waitpid(std::vector<std::string>& parameters)",
+    "return_type": "void",
+    "return_description": null,
+    "args": [
+      {
+        "name": "parameters",
+        "type": "std::vector<std::string>&",
+        "description": "Os parâmetros da linha de comando que podem conter --waitpid."
+      }
+    ],
+    "summary": "Remove parâmetros --waitpid da lista.",
+    "description": "Olá, Time LEGACY DOC! Neste caso, eu removo qualquer parâmetro --waitpid existente da lista de parâmetros. Isso é necessário para evitar conflitos em reinicializações múltiplas. Ao fazer isso, eu asseguro que a linha de comando esteja limpa e pronta para novos parâmetros, melhorando a estabilidade do sistema.",
+    "raises": []
+  },
+  {
+    "name": "GFX_RequestExit",
+    "kind": "function",
+    "signature": "void GFX_RequestExit(bool immediate)",
+    "return_type": "void",
+    "return_description": null,
+    "args": [
+      {
+        "name": "immediate",
+        "type": "bool",
+        "description": "Indica se a saída deve ser imediata."
+      }
+    ],
+    "summary": "Solicita a saída do sistema gráfico.",
+    "description": "Olá, Time LEGACY DOC! Aqui, eu solicito a saída do sistema gráfico, podendo ser imediata ou não. Isso é crucial para garantir que o DOSBox feche corretamente, liberando recursos e evitando possíveis vazamentos de memória. Essa ação finaliza a execução de forma controlada, mantendo a integridade do sistema.",
+    "raises": []
+  },
+  {
+    "name": "CreateProcess",
+    "kind": "function",
+    "signature": "BOOL CreateProcess(LPCSTR lpApplicationName, LPSTR lpCommandLine, LPSECURITY_ATTRIBUTES lpProcessAttributes, LPSECURITY_ATTRIBUTES lpThreadAttributes, BOOL bInheritHandles, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCSTR lpCurrentDirectory, LPSTARTUPINFO lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation)",
+    "return_type": "BOOL",
+    "return_description": "Returns TRUE if the process is created successfully, otherwise FALSE.",
+    "args": [
+      {
+        "name": "lpApplicationName",
+        "type": "LPCSTR",
+        "description": "Nome do aplicativo a ser executado."
+      },
+      {
+        "name": "lpCommandLine",
+        "type": "LPSTR",
+        "description": "Linha de comando para o processo."
+      },
+      {
+        "name": "lpProcessAttributes",
+        "type": "LPSECURITY_ATTRIBUTES",
+        "description": "Atributos de segurança do processo."
+      },
+      {
+        "name": "lpThreadAttributes",
+        "type": "LPSECURITY_ATTRIBUTES",
+        "description": "Atributos de segurança da thread."
+      },
+      {
+        "name": "bInheritHandles",
+        "type": "BOOL",
+        "description": "Indica se os manipuladores devem ser herdados."
+      },
+      {
+        "name": "dwCreationFlags",
+        "type": "DWORD",
+        "description": "Flags de criação do processo."
+      },
+      {
+        "name": "lpEnvironment",
+        "type": "LPVOID",
+        "description": "Variáveis de ambiente para o novo processo."
+      },
+      {
+        "name": "lpCurrentDirectory",
+        "type": "LPCSTR",
+        "description": "Diretório atual para o novo processo."
+      },
+      {
+        "name": "lpStartupInfo",
+        "type": "LPSTARTUPINFO",
+        "description": "Informações de inicialização do processo."
+      },
+      {
+        "name": "lpProcessInformation",
+        "type": "LPPROCESS_INFORMATION",
+        "description": "Informações sobre o processo criado."
+      }
+    ],
+    "summary": "Cria um novo processo no Windows.",
+    "description": "Olá, Time LEGACY DOC! Neste contexto, utilizo a função CreateProcess para iniciar um novo processo no Windows. Ao fornecer os parâmetros corretos, consigo controlar a criação do processo e suas características, impactando diretamente na execução do meu aplicativo.",
+    "raises": []
+  },
+  {
+    "name": "LOG_ERR",
+    "kind": "function",
+    "signature": "void LOG_ERR(const char* message)",
+    "return_type": "void",
+    "return_description": "Não retorna valor.",
+    "args": [
+      {
+        "name": "message",
+        "type": "const char*",
+        "description": "Mensagem de erro a ser registrada."
+      }
+    ],
+    "summary": "Registra uma mensagem de erro.",
+    "description": "Olá, Time LEGACY DOC! A função LOG_ERR é utilizada para registrar mensagens de erro quando a criação do processo falha. Isso me ajuda a identificar problemas durante a execução do aplicativo, facilitando a depuração e a manutenção do código.",
     "raises": []
   },
   {
     "name": "dosbox_realinit",
     "kind": "function",
+    "signature": "static void dosbox_realinit(SectionProp& section)",
     "return_type": "void",
+    "return_description": null,
     "args": [
       {
         "name": "section",
-        "type": "SectionProp&"
+        "type": "SectionProp&",
+        "description": "Referência para a seção de propriedades a ser inicializada."
       }
     ],
-    "summary": "Inicializa alguns internos do dosbox.",
-    "description": "Olá, Time WaveCast! Neste contexto, estou inicializando alguns componentes internos do dosbox. A ação envolve configurar o loop normal, adicionar manipuladores e definir estratégias de falha. Isso impacta a operação do dosbox, garantindo que ele funcione corretamente com as configurações do usuário.",
+    "summary": "Inicializa os internos do DOSBox.",
+    "description": "Olá, Time LEGACY DOC! Neste contexto, estou inicializando os internos do DOSBox. A ação envolve configurar variáveis, definir o tipo de máquina e ajustar a estratégia de falha do MCB. O impacto é que isso garante que o DOSBox funcione corretamente com as configurações do usuário.",
     "raises": []
   },
   {
     "name": "DOSBOX_Init",
     "kind": "function",
+    "signature": "void DOSBOX_Init()",
     "return_type": "void",
+    "return_description": null,
     "args": [],
-    "summary": "Inicializa o DOSBox.",
-    "description": "Olá, Time WaveCast! Neste contexto, estou inicializando o DOSBox. Chamando várias funções de inicialização, como IO_Init e MEM_Init, eu garanto que todos os componentes necessários estão prontos para uso. Isso impacta diretamente na performance e funcionalidade do DOSBox, permitindo que ele opere corretamente.",
+    "summary": "Inicializa o módulo DOSBox.",
+    "description": "Olá, Time LEGACY DOC! Neste contexto, eu inicializo o módulo DOSBox, garantindo que todas as configurações e mensagens necessárias sejam carregadas. Isso é importante para preparar o ambiente de emulação, permitindo que o DOSBox funcione corretamente e ofereça uma experiência de usuário fluida.",
     "raises": []
   },
   {
     "name": "DOSBOX_Destroy",
     "kind": "function",
+    "signature": "void DOSBOX_Destroy()",
     "return_type": "void",
+    "return_description": null,
     "args": [],
-    "summary": "Destrói todos os componentes do DOSBox.",
-    "description": "Olá, Time WaveCast! Neste contexto, eu estou lidando com a destruição de todos os componentes do DOSBox. Ao chamar a função, eu garanto que todos os recursos alocados sejam liberados corretamente, evitando vazamentos de memória e garantindo uma finalização limpa do sistema.",
+    "summary": "Destrói os módulos do DOSBox.",
+    "description": "Olá, Time LEGACY DOC! Neste contexto, eu implemento a função DOSBOX_Destroy. Ela é responsável por liberar todos os recursos alocados pelos módulos do DOSBox. Ao chamar essa função, garantimos que a memória e outros recursos sejam corretamente liberados, evitando vazamentos e garantindo um encerramento limpo do emulador.",
+    "raises": []
+  },
+  {
+    "name": "notify_dosbox_setting_updated",
+    "kind": "function",
+    "signature": "static void notify_dosbox_setting_updated(const SectionProp& section, const std::string prop_name)",
+    "return_type": "void",
+    "return_description": null,
+    "args": [
+      {
+        "name": "section",
+        "type": "const SectionProp&",
+        "description": "Referência à seção de propriedades."
+      },
+      {
+        "name": "prop_name",
+        "type": "const std::string",
+        "description": "Nome da propriedade que foi atualizada."
+      }
+    ],
+    "summary": "Notifica sobre atualizações de configurações do DOSBox.",
+    "description": "Olá, Time LEGACY DOC! Aqui, eu criei a função notify_dosbox_setting_updated. Ela é chamada quando uma configuração do DOSBox é atualizada. Dependendo da propriedade alterada, a função executa ações específicas, como carregar mensagens ou ajustar a taxa de atualização, garantindo que as mudanças sejam refletidas imediatamente.",
+    "raises": []
+  },
+  {
+    "name": "add_dosbox_config_section",
+    "kind": "function",
+    "signature": "static void add_dosbox_config_section(const ConfigPtr& conf)",
+    "return_type": "void",
+    "return_description": null,
+    "args": [
+      {
+        "name": "conf",
+        "type": "const ConfigPtr&",
+        "description": "Ponteiro para a configuração."
+      }
+    ],
+    "summary": "Adiciona uma seção de configuração ao DOSBox.",
+    "description": "Olá, Time LEGACY DOC! Nesta função, add_dosbox_config_section, eu adiciono uma nova seção de configuração ao DOSBox. Através dela, é possível definir propriedades como a linguagem e registrar manipuladores de atualização, permitindo que o emulador responda a mudanças nas configurações de forma dinâmica e eficiente.",
     "raises": []
   },
   {
     "name": "DOSBOX_InitModuleConfigsAndMessages",
     "kind": "function",
+    "signature": "void DOSBOX_InitModuleConfigsAndMessages()",
     "return_type": "void",
+    "return_description": null,
     "args": [],
     "summary": "Inicializa as configurações e mensagens do módulo DOSBox.",
-    "description": "Olá, Time WaveCast! Neste contexto, eu inicializo várias seções de configuração do DOSBox. Ao chamar essa função, eu garanto que todas as seções necessárias sejam configuradas corretamente, evitando inicializações duplicadas e melhorando a estabilidade do sistema.",
+    "description": "Olá, Time LEGACY DOC! Neste contexto, eu inicializo várias seções de configuração do DOSBox. Ao chamar esta função, garanto que todos os módulos necessários sejam configurados corretamente, evitando inicializações duplicadas e assegurando que o sistema funcione de maneira eficiente. Isso é crucial para a operação correta do emulador.",
     "raises": []
   },
   {
     "name": "DOSBOX_InitModules",
     "kind": "function",
+    "signature": "void DOSBOX_InitModules()",
     "return_type": "void",
+    "return_description": null,
     "args": [],
     "summary": "Inicializa todos os módulos do DOSBox.",
-    "description": "Olá, Time WaveCast! Neste contexto, eu inicializo todos os módulos necessários para o funcionamento do DOSBox. Ao chamar essa função, garanto que cada componente, como CPU e VGA, esteja pronto para uso, impactando diretamente a performance e a estabilidade do sistema.",
+    "description": "Olá, Time LEGACY DOC! Aqui, eu cuido da inicialização de todos os módulos do DOSBox. Essa função é chamada para garantir que cada parte do sistema esteja pronta para uso, o que é fundamental para a experiência do usuário. Sem essa inicialização, o emulador pode não funcionar corretamente.",
+    "raises": []
+  },
+  {
+    "name": "DOSBOX_InitModules",
+    "kind": "function",
+    "signature": "void DOSBOX_InitModules()",
+    "return_type": "void",
+    "return_description": null,
+    "args": [],
+    "summary": "Inicializa todos os módulos do DOSBox.",
+    "description": "Olá, Time LEGACY DOC! Neste contexto, eu inicializo todos os módulos necessários para o funcionamento do DOSBox. Ao chamar esta função, garanto que cada componente, como CPU e áudio, esteja pronto para uso, impactando diretamente a performance e a estabilidade do emulador.",
+    "raises": []
+  },
+  {
+    "name": "DOSBOX_Init",
+    "kind": "function",
+    "signature": "void DOSBOX_Init()",
+    "return_type": "void",
+    "return_description": null,
+    "args": [],
+    "summary": "Inicializa o DOSBox.",
+    "description": "Olá, Time LEGACY DOC! Aqui, eu realizo a inicialização do DOSBox. Essa função é crucial, pois estabelece o ambiente necessário antes de qualquer operação, garantindo que todos os sistemas estejam prontos para serem utilizados, o que é fundamental para a experiência do usuário.",
+    "raises": []
+  },
+  {
+    "name": "PROGRAMS_AddMessages",
+    "kind": "function",
+    "signature": "void PROGRAMS_AddMessages()",
+    "return_type": "void",
+    "return_description": null,
+    "args": [],
+    "summary": "Adiciona mensagens de configuração ao programa.",
+    "description": "Olá, Time LEGACY DOC! Nesta função, eu adiciono mensagens que ajudam na configuração do programa. Isso é importante para que os usuários entendam como usar o DOSBox corretamente, melhorando a usabilidade e a experiência geral do usuário.",
+    "raises": []
+  },
+  {
+    "name": "LOG_StartUp",
+    "kind": "function",
+    "signature": "void LOG_StartUp()",
+    "return_type": "void",
+    "return_description": null,
+    "args": [],
+    "summary": "Inicia o log do sistema.",
+    "description": "Olá, Time LEGACY DOC! Aqui, eu começo o registro de logs do sistema. Essa função é essencial para monitorar o comportamento do DOSBox durante a execução, permitindo que desenvolvedores e usuários identifiquem problemas e melhorem a performance do emulador.",
+    "raises": []
+  },
+  {
+    "name": "LOG_Init",
+    "kind": "function",
+    "signature": "void LOG_Init()",
+    "return_type": "void",
+    "return_description": null,
+    "args": [],
+    "summary": "Inicializa o sistema de log.",
+    "description": "Olá, Time LEGACY DOC! Nesta função, eu configuro o sistema de log do DOSBox. Isso é fundamental para garantir que todas as informações relevantes sejam registradas corretamente, ajudando na depuração e na análise de desempenho do emulador.",
+    "raises": []
+  },
+  {
+    "name": "COMPOSITE_Init",
+    "kind": "function",
+    "signature": "void COMPOSITE_Init()",
+    "return_type": "void",
+    "return_description": null,
+    "args": [],
+    "summary": "Inicializa o sistema composto.",
+    "description": "Olá, Time LEGACY DOC! Aqui, eu inicializo o sistema composto do DOSBox. Essa função é importante para garantir que todos os componentes gráficos e de entrada funcionem em conjunto, proporcionando uma experiência de emulação mais fluida e integrada.",
+    "raises": []
+  },
+  {
+    "name": "CPU_Init",
+    "kind": "function",
+    "signature": "void CPU_Init()",
+    "return_type": "void",
+    "return_description": null,
+    "args": [],
+    "summary": "Inicializa a emulação da CPU.",
+    "description": "Olá, Time LEGACY DOC! Nesta função, eu inicializo a emulação da CPU do DOSBox. Isso é crucial, pois garante que a emulação do processador funcione corretamente, impactando diretamente a performance dos jogos e aplicativos executados no emulador.",
+    "raises": []
+  },
+  {
+    "name": "FPU_Init",
+    "kind": "function",
+    "signature": "void FPU_Init()",
+    "return_type": "void",
+    "return_description": null,
+    "args": [],
+    "summary": "Inicializa a emulação da FPU.",
+    "description": "Olá, Time LEGACY DOC! Aqui, eu inicializo a emulação da Unidade de Ponto Flutuante (FPU) do DOSBox. Essa função é importante para garantir cálculos precisos em aplicações que dependem de operações matemáticas complexas, melhorando a compatibilidade e a performance.",
+    "raises": []
+  },
+  {
+    "name": "DMA_Init",
+    "kind": "function",
+    "signature": "void DMA_Init()",
+    "return_type": "void",
+    "return_description": null,
+    "args": [],
+    "summary": "Inicializa o sistema DMA.",
+    "description": "Olá, Time LEGACY DOC! Nesta função, eu inicializo o sistema de Acesso Direto à Memória (DMA) do DOSBox. Isso é essencial para garantir que a transferência de dados entre dispositivos e a memória funcione de forma eficiente, impactando a performance geral do emulador.",
+    "raises": []
+  },
+  {
+    "name": "VGA_Init",
+    "kind": "function",
+    "signature": "void VGA_Init()",
+    "return_type": "void",
+    "return_description": null,
+    "args": [],
+    "summary": "Inicializa a emulação da VGA.",
+    "description": "Olá, Time LEGACY DOC! Aqui, eu inicializo a emulação da placa gráfica VGA do DOSBox. Essa função é fundamental para garantir que os gráficos sejam renderizados corretamente, proporcionando uma experiência visual adequada para os usuários.",
+    "raises": []
+  },
+  {
+    "name": "KEYBOARD_Init",
+    "kind": "function",
+    "signature": "void KEYBOARD_Init()",
+    "return_type": "void",
+    "return_description": null,
+    "args": [],
+    "summary": "Inicializa a emulação do teclado.",
+    "description": "Olá, Time LEGACY DOC! Nesta função, eu inicializo a emulação do teclado do DOSBox. Isso é importante para garantir que as entradas do usuário sejam capturadas corretamente, permitindo uma interação fluida com os jogos e aplicativos.",
+    "raises": []
+  },
+  {
+    "name": "PCI_Init",
+    "kind": "function",
+    "signature": "void PCI_Init()",
+    "return_type": "void",
+    "return_description": null,
+    "args": [],
+    "summary": "Inicializa a emulação do PCI.",
+    "description": "Olá, Time LEGACY DOC! Aqui, eu inicializo a emulação do barramento PCI do DOSBox. Essa função é essencial para garantir que dispositivos conectados funcionem corretamente, melhorando a compatibilidade e a performance do emulador.",
+    "raises": []
+  },
+  {
+    "name": "VOODOO_Init",
+    "kind": "function",
+    "signature": "void VOODOO_Init()",
+    "return_type": "void",
+    "return_description": null,
+    "args": [],
+    "summary": "Inicializa a emulação da placa Voodoo.",
+    "description": "Olá, Time LEGACY DOC! Nesta função, eu inicializo a emulação da placa gráfica Voodoo do DOSBox. Isso é crucial para garantir que jogos que utilizam essa tecnologia gráfica funcionem corretamente, proporcionando uma experiência visual melhorada.",
+    "raises": []
+  },
+  {
+    "name": "CAPTURE_Init",
+    "kind": "function",
+    "signature": "void CAPTURE_Init()",
+    "return_type": "void",
+    "return_description": null,
+    "args": [],
+    "summary": "Inicializa o sistema de captura de vídeo.",
+    "description": "Olá, Time LEGACY DOC! Aqui, eu inicializo o sistema de captura de vídeo do DOSBox. Essa função é importante para permitir que os usuários gravem suas sessões de jogo, melhorando a experiência e possibilitando o compartilhamento de gameplay.",
+    "raises": []
+  },
+  {
+    "name": "MIXER_Init",
+    "kind": "function",
+    "signature": "void MIXER_Init()",
+    "return_type": "void",
+    "return_description": null,
+    "args": [],
+    "summary": "Inicializa o mixer de áudio.",
+    "description": "Olá, Time LEGACY DOC! Nesta função, eu inicializo o mixer de áudio do DOSBox. Isso é essencial para garantir que todos os sons e músicas sejam reproduzidos corretamente, proporcionando uma experiência auditiva imersiva para os usuários.",
+    "raises": []
+  },
+  {
+    "name": "MIDI_Init",
+    "kind": "function",
+    "signature": "void MIDI_Init()",
+    "return_type": "void",
+    "return_description": null,
+    "args": [],
+    "summary": "Inicializa a emulação MIDI.",
+    "description": "Olá, Time LEGACY DOC! Aqui, eu inicializo a emulação MIDI do DOSBox. Essa função é importante para garantir que dispositivos MIDI funcionem corretamente, permitindo que os usuários desfrutem de uma experiência musical rica e diversificada.",
+    "raises": []
+  },
+  {
+    "name": "DEBUG_Init",
+    "kind": "function",
+    "signature": "void DEBUG_Init()",
+    "return_type": "void",
+    "return_description": null,
+    "args": [],
+    "summary": "Inicializa o sistema de depuração.",
+    "description": "Olá, Time LEGACY DOC! Nesta função, eu inicializo o sistema de depuração do DOSBox. Isso é crucial para desenvolvedores que precisam monitorar e corrigir problemas, melhorando a qualidade e a estabilidade do emulador.",
+    "raises": []
+  },
+  {
+    "name": "SBLASTER_Init",
+    "kind": "function",
+    "signature": "void SBLASTER_Init()",
+    "return_type": "void",
+    "return_description": null,
+    "args": [],
+    "summary": "Inicializa a emulação da Sound Blaster.",
+    "description": "Olá, Time LEGACY DOC! Aqui, eu inicializo a emulação da placa de som Sound Blaster do DOSBox. Essa função é essencial para garantir que os sons sejam reproduzidos corretamente, proporcionando uma experiência auditiva autêntica para os usuários.",
+    "raises": []
+  },
+  {
+    "name": "GUS_Init",
+    "kind": "function",
+    "signature": "void GUS_Init()",
+    "return_type": "void",
+    "return_description": null,
+    "args": [],
+    "summary": "Inicializa a emulação da Gravis Ultrasound.",
+    "description": "Olá, Time LEGACY DOC! Nesta função, eu inicializo a emulação da placa de som Gravis Ultrasound do DOSBox. Isso é importante para garantir que jogos que utilizam essa tecnologia de som funcionem corretamente, melhorando a experiência auditiva.",
+    "raises": []
+  },
+  {
+    "name": "IMFC_Init",
+    "kind": "function",
+    "signature": "void IMFC_Init()",
+    "return_type": "void",
+    "return_description": null,
+    "args": [],
+    "summary": "Inicializa a emulação do IMFC.",
+    "description": "Olá, Time LEGACY DOC! Aqui, eu inicializo a emulação do IMFC no DOSBox. Essa função é crucial para garantir que dispositivos conectados funcionem corretamente, melhorando a compatibilidade e a performance do emulador.",
+    "raises": []
+  },
+  {
+    "name": "INNOVATION_Init",
+    "kind": "function",
+    "signature": "void INNOVATION_Init()",
+    "return_type": "void",
+    "return_description": null,
+    "args": [],
+    "summary": "Inicializa a emulação de inovação.",
+    "description": "Olá, Time LEGACY DOC! Nesta função, eu inicializo a emulação de inovação do DOSBox. Isso é importante para garantir que novas tecnologias e dispositivos sejam suportados, melhorando a experiência do usuário.",
+    "raises": []
+  },
+  {
+    "name": "SPEAKER_Init",
+    "kind": "function",
+    "signature": "void SPEAKER_Init()",
+    "return_type": "void",
+    "return_description": null,
+    "args": [],
+    "summary": "Inicializa a emulação do alto-falante.",
+    "description": "Olá, Time LEGACY DOC! Aqui, eu inicializo a emulação do alto-falante do DOSBox. Essa função é essencial para garantir que os sons sejam reproduzidos corretamente, proporcionando uma experiência auditiva completa para os usuários.",
+    "raises": []
+  },
+  {
+    "name": "REELMAGIC_Init",
+    "kind": "function",
+    "signature": "void REELMAGIC_Init()",
+    "return_type": "void",
+    "return_description": null,
+    "args": [],
+    "summary": "Inicializa a emulação do Reel Magic.",
+    "description": "Olá, Time LEGACY DOC! Nesta função, eu inicializo a emulação do Reel Magic no DOSBox. Isso é importante para garantir que jogos que utilizam essa tecnologia funcionem corretamente, melhorando a experiência do usuário.",
     "raises": []
   },
   {
     "name": "DOSBOX_DestroyModules",
     "kind": "function",
+    "signature": "void DOSBOX_DestroyModules()",
     "return_type": "void",
+    "return_description": null,
     "args": [],
-    "summary": "Destrói todos os módulos do DOSBox.",
-    "description": "Olá, Time WaveCast! Neste contexto, estou lidando com a destruição de módulos do DOSBox. A função remove todos os módulos inicializados, garantindo que os recursos sejam liberados corretamente. Isso impacta na eficiência do sistema, evitando vazamentos de memória e garantindo que o ambiente esteja limpo para futuras operações.",
+    "summary": "Destrói os módulos do DOSBox.",
+    "description": "Olá, Time LEGACY DOC! Neste contexto, eu estou destruindo todos os módulos do DOSBox. A ação garante que todos os recursos alocados sejam liberados corretamente, evitando vazamentos de memória. Isso é crucial para manter a estabilidade e a eficiência do emulador ao encerrar suas operações.",
     "raises": []
   }
 ]

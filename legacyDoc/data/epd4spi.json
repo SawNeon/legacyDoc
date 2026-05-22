@@ -1,0 +1,350 @@
+[
+  {
+    "name": "init",
+    "kind": "method",
+    "signature": "void Epd4Spi::init(uint8_t frequency=4,bool debug=false)",
+    "return_type": "void",
+    "return_description": null,
+    "args": [
+      {
+        "name": "frequency",
+        "type": "uint8_t",
+        "description": "Frequência do SPI, padrão é 4."
+      },
+      {
+        "name": "debug",
+        "type": "bool",
+        "description": "Ativa ou desativa o modo de depuração."
+      }
+    ],
+    "summary": "Inicializa a comunicação SPI com configurações específicas.",
+    "description": "Olá, Time LEGACY DOC! Neste método, eu configuro os pinos GPIO para a comunicação SPI. Primeiro, defino as direções e estados iniciais dos pinos. Em seguida, configuro os pinos de entrada com pull-up. Isso garante que a comunicação SPI funcione corretamente.",
+    "raises": []
+  },
+  {
+    "name": "cmdM1",
+    "kind": "method",
+    "signature": "void Epd4Spi::cmdM1(const uint8_t cmd)",
+    "return_type": "void",
+    "return_description": null,
+    "args": [
+      {
+        "name": "cmd",
+        "type": "uint8_t",
+        "description": "O comando a ser enviado."
+      }
+    ],
+    "summary": "Envia um comando SPI para o dispositivo M1.",
+    "description": "Olá, Time LEGACY DOC! Neste método, eu envio um comando SPI para o dispositivo M1. Primeiro, verifico se o modo de depuração está ativado e, em seguida, configuro a transação SPI. Após a transmissão, asseguro que não houve erros. Isso garante que o comando seja enviado corretamente ao dispositivo.",
+    "raises": []
+  },
+  {
+    "name": "dataM1",
+    "kind": "method",
+    "signature": "void Epd4Spi::dataM1(uint8_t data)",
+    "return_type": "void",
+    "return_description": null,
+    "args": [
+      {
+        "name": "data",
+        "type": "uint8_t",
+        "description": "Os dados a serem enviados."
+      }
+    ],
+    "summary": "Envia dados SPI para o dispositivo M1.",
+    "description": "Olá, Time LEGACY DOC! Neste método, eu envio dados SPI para o dispositivo M1. Assim como no método anterior, verifico o modo de depuração e configuro a transação SPI. Após a transmissão, confirmo que não houve erros. Isso assegura que os dados sejam enviados corretamente ao dispositivo.",
+    "raises": []
+  },
+  {
+    "name": "cmdS1",
+    "kind": "method",
+    "signature": "void Epd4Spi::cmdS1(const uint8_t cmd)",
+    "return_type": "void",
+    "return_description": null,
+    "args": [
+      {
+        "name": "cmd",
+        "type": "uint8_t",
+        "description": "Comando a ser enviado via SPI."
+      }
+    ],
+    "summary": "Envia um comando S1 via SPI.",
+    "description": "Olá, Time LEGACY DOC! Neste método, eu envio um comando S1 através da interface SPI. Primeiro, verifico se o modo de depuração está ativado e, em seguida, configuro a transação SPI. Após a transmissão, restauro os níveis GPIO para finalizar a operação.",
+    "raises": []
+  },
+  {
+    "name": "dataS1",
+    "kind": "method",
+    "signature": "void Epd4Spi::dataS1(uint8_t data)",
+    "return_type": "void",
+    "return_description": null,
+    "args": [
+      {
+        "name": "data",
+        "type": "uint8_t",
+        "description": "Dados a serem enviados via SPI."
+      }
+    ],
+    "summary": "Envia dados S1 via SPI.",
+    "description": "Olá, Time LEGACY DOC! Aqui, eu envio dados S1 pela interface SPI. Primeiro, verifico se o modo de depuração está ativado e, em seguida, configuro a transação SPI. Após a transmissão, restauro os níveis GPIO para concluir a operação.",
+    "raises": []
+  },
+  {
+    "name": "cmdM2",
+    "kind": "method",
+    "signature": "void Epd4Spi::cmdM2(const uint8_t cmd)",
+    "return_type": "void",
+    "return_description": null,
+    "args": [
+      {
+        "name": "cmd",
+        "type": "uint8_t",
+        "description": "Comando a ser enviado via SPI."
+      }
+    ],
+    "summary": "Envia um comando M2 via SPI.",
+    "description": "Olá, Time LEGACY DOC! Neste método, eu envio um comando M2 através da interface SPI. Primeiro, verifico se o modo de depuração está ativado e, em seguida, configuro a transação SPI. Após a transmissão, restauro os níveis GPIO para finalizar a operação.",
+    "raises": []
+  },
+  {
+    "name": "dataM2",
+    "kind": "method",
+    "signature": "void Epd4Spi::dataM2(uint8_t data)",
+    "return_type": "void",
+    "return_description": null,
+    "args": [
+      {
+        "name": "data",
+        "type": "uint8_t",
+        "description": "O dado a ser enviado via SPI."
+      }
+    ],
+    "summary": "Envia um dado de 8 bits via SPI.",
+    "description": "Olá, Time LEGACY DOC! Neste método, eu envio um dado de 8 bits através da interface SPI. Primeiro, verifico se o modo de depuração está ativado e imprimo o dado. Em seguida, configuro a transação SPI e transmito o dado, garantindo que a operação seja bem-sucedida.",
+    "raises": []
+  },
+  {
+    "name": "cmdS2",
+    "kind": "method",
+    "signature": "void Epd4Spi::cmdS2(const uint8_t cmd)",
+    "return_type": "void",
+    "return_description": null,
+    "args": [
+      {
+        "name": "cmd",
+        "type": "const uint8_t",
+        "description": "O comando a ser enviado via SPI."
+      }
+    ],
+    "summary": "Envia um comando de 8 bits via SPI.",
+    "description": "Olá, Time LEGACY DOC! Aqui, eu envio um comando de 8 bits pela interface SPI. Primeiro, imprimo o comando se o modo de depuração estiver ativado. Depois, configuro a transação SPI e transmito o comando, assegurando que a operação seja bem-sucedida.",
+    "raises": []
+  },
+  {
+    "name": "dataM2",
+    "kind": "method",
+    "signature": "void Epd4Spi::dataM2(uint8_t data)",
+    "return_type": "void",
+    "return_description": null,
+    "args": [
+      {
+        "name": "data",
+        "type": "uint8_t",
+        "description": "O dado a ser enviado via SPI."
+      }
+    ],
+    "summary": "Envia um dado de 8 bits via SPI.",
+    "description": "Olá, Time LEGACY DOC! Neste método, eu envio um dado de 8 bits através da interface SPI. Primeiro, verifico se o modo de depuração está ativado e imprimo o dado. Em seguida, configuro a transação SPI e transmito o dado, garantindo que a operação seja bem-sucedida.",
+    "raises": []
+  },
+  {
+    "name": "cmdS2",
+    "kind": "method",
+    "signature": "void Epd4Spi::cmdS2(const uint8_t cmd)",
+    "return_type": "void",
+    "return_description": null,
+    "args": [
+      {
+        "name": "cmd",
+        "type": "const uint8_t",
+        "description": "O comando a ser enviado via SPI."
+      }
+    ],
+    "summary": "Envia um comando de 8 bits via SPI.",
+    "description": "Olá, Time LEGACY DOC! Aqui, eu envio um comando de 8 bits pela interface SPI. Primeiro, imprimo o comando se o modo de depuração estiver ativado. Depois, configuro a transação SPI e transmito o comando, assegurando que a operação seja bem-sucedida.",
+    "raises": []
+  },
+  {
+    "name": "dataS2",
+    "kind": "method",
+    "signature": "void Epd4Spi::dataS2(uint8_t data)",
+    "return_type": "void",
+    "return_description": null,
+    "args": [
+      {
+        "name": "data",
+        "type": "uint8_t",
+        "description": "Dados a serem enviados para o display."
+      }
+    ],
+    "summary": "Envia dados para o display S2.",
+    "description": "Olá, Time LEGACY DOC! Neste método, eu envio dados para o display S2. Primeiro, habilito o nível do GPIO correspondente e, em seguida, transmito os dados via SPI. Isso garante que o display receba as informações corretas para atualização.",
+    "raises": []
+  },
+  {
+    "name": "cmdM1S1M2S2",
+    "kind": "method",
+    "signature": "void Epd4Spi::cmdM1S1M2S2(uint8_t cmd)",
+    "return_type": "void",
+    "return_description": null,
+    "args": [
+      {
+        "name": "cmd",
+        "type": "uint8_t",
+        "description": "Comando a ser enviado para os displays."
+      }
+    ],
+    "summary": "Envia um comando para todos os 4 displays.",
+    "description": "Olá, Time LEGACY DOC! Aqui, eu envio um comando para todos os quatro displays. Configuro os níveis dos GPIOs e transmito o comando via SPI, garantindo que todos os displays recebam a instrução simultaneamente.",
+    "raises": []
+  },
+  {
+    "name": "dataM1S1M2S2",
+    "kind": "method",
+    "signature": "void Epd4Spi::dataM1S1M2S2(uint8_t data)",
+    "return_type": "void",
+    "return_description": null,
+    "args": [
+      {
+        "name": "data",
+        "type": "uint8_t",
+        "description": "Dados a serem enviados para os displays."
+      }
+    ],
+    "summary": "Envia dados para os displays M1, S1, M2 e S2.",
+    "description": "Olá, Time LEGACY DOC! Neste método, eu envio dados para os displays M1, S1, M2 e S2. Configuro os níveis dos GPIOs e transmito os dados via SPI, garantindo que todos os displays sejam atualizados com as informações corretas.",
+    "raises": []
+  },
+  {
+    "name": "dataM1S1M2S2",
+    "kind": "method",
+    "signature": "void Epd4Spi::dataM1S1M2S2(uint8_t data)",
+    "return_type": "void",
+    "return_description": null,
+    "args": [
+      {
+        "name": "data",
+        "type": "uint8_t",
+        "description": "Dados a serem enviados para os displays."
+      }
+    ],
+    "summary": "Envia dados para os displays M1, S1, M2 e S2.",
+    "description": "Olá, Time LEGACY DOC! Neste método, eu envio dados para os displays M1, S1, M2 e S2. Configuro os níveis dos GPIOs e transmito os dados via SPI, garantindo que todos os displays sejam atualizados com as informações corretas.",
+    "raises": []
+  },
+  {
+    "name": "data",
+    "kind": "method",
+    "signature": "void Epd4Spi::data(const uint8_t *data, int len)",
+    "return_type": "void",
+    "return_description": null,
+    "args": [
+      {
+        "name": "data",
+        "type": "const uint8_t *",
+        "description": "Dados a serem enviados via SPI."
+      },
+      {
+        "name": "len",
+        "type": "int",
+        "description": "Comprimento dos dados a serem enviados."
+      }
+    ],
+    "summary": "Envia dados para o SPI.",
+    "description": "Olá, Time LEGACY DOC! Neste método, eu envio dados para o SPI chamando o método dataM1. Isso garante que os dados sejam transmitidos corretamente. O impacto é que a comunicação SPI é realizada de forma eficiente, permitindo a transferência de dados para o dispositivo conectado.",
+    "raises": []
+  },
+  {
+    "name": "dataM1",
+    "kind": "method",
+    "signature": "void Epd4Spi::dataM1(const uint8_t *data, int len)",
+    "return_type": "void",
+    "return_description": null,
+    "args": [
+      {
+        "name": "data",
+        "type": "const uint8_t *",
+        "description": "Dados a serem enviados via SPI."
+      },
+      {
+        "name": "len",
+        "type": "int",
+        "description": "Comprimento dos dados a serem enviados."
+      }
+    ],
+    "summary": "Transmite dados via SPI para M1.",
+    "description": "Olá, Time LEGACY DOC! Neste método, eu transmito dados via SPI para o dispositivo M1. Primeiro, verifico se o comprimento é zero e, em seguida, configuro a transação SPI. O impacto é garantir que os dados sejam enviados corretamente e que a comunicação funcione sem problemas.",
+    "raises": []
+  },
+  {
+    "name": "dataS1",
+    "kind": "method",
+    "signature": "void Epd4Spi::dataS1(const uint8_t *data, int len)",
+    "return_type": "void",
+    "return_description": null,
+    "args": [
+      {
+        "name": "data",
+        "type": "const uint8_t *",
+        "description": "Um ponteiro para os dados a serem transmitidos."
+      },
+      {
+        "name": "len",
+        "type": "int",
+        "description": "O comprimento dos dados a serem transmitidos."
+      }
+    ],
+    "summary": "Transmite dados usando o canal S1.",
+    "description": "Olá, Time LEGACY DOC! Neste método, verifico se o comprimento dos dados é zero. Se não for, configuro o nível do GPIO para iniciar a transmissão, transmito os dados e, em seguida, restauro o nível do GPIO. Isso garante que os dados sejam enviados corretamente pelo canal S1.",
+    "raises": []
+  },
+  {
+    "name": "dataS2",
+    "kind": "method",
+    "signature": "void Epd4Spi::dataS2(const uint8_t *data, int len)",
+    "return_type": "void",
+    "return_description": null,
+    "args": [
+      {
+        "name": "data",
+        "type": "const uint8_t *",
+        "description": "Um ponteiro para os dados a serem transmitidos."
+      },
+      {
+        "name": "len",
+        "type": "int",
+        "description": "O comprimento dos dados a serem transmitidos."
+      }
+    ],
+    "summary": "Transmite dados usando o canal S2.",
+    "description": "Olá, Time LEGACY DOC! Neste método, verifico se o comprimento dos dados é zero. Se não for, configuro o nível do GPIO para iniciar a transmissão, transmito os dados e, em seguida, restauro o nível do GPIO. Isso garante que os dados sejam enviados corretamente pelo canal S2.",
+    "raises": []
+  },
+  {
+    "name": "reset",
+    "kind": "method",
+    "signature": "void Epd4Spi::reset(uint8_t millis=20)",
+    "return_type": "void",
+    "return_description": null,
+    "args": [
+      {
+        "name": "millis",
+        "type": "uint8_t",
+        "description": "O tempo em milissegundos para o reset."
+      }
+    ],
+    "summary": "Reseta o dispositivo com um atraso especificado.",
+    "description": "Olá, Time LEGACY DOC! Neste método, configuro os níveis do GPIO para zero, aguardo um tempo especificado e, em seguida, restauro os níveis do GPIO. Isso garante que o dispositivo seja resetado corretamente, permitindo uma inicialização limpa.",
+    "raises": []
+  }
+]

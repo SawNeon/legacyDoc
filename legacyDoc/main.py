@@ -2,19 +2,23 @@
 import os
 import json
 from dotenv import load_dotenv
-from typing import TypedDict, Optional
+from typing import TypedDict, Optional, Any, Dict, Generator
 from langgraph.graph import StateGraph, END
+from pathlib import Path
 
+from tools.exporters import ExporterFactory
 from tools.github_loader import load_cpp_from_github
 from agents.reader import run_reader_agent
 from agents.writer import run_writer_agent
 from agents.verifier import run_verifier_agent
 from core.schemas import FileDocumentation
-from tools.pdf_generator import export_doc_to_pdf
+
+BASE_DIR = Path(__file__).resolve().parent
 
 USE_MANUAL_MODE = False
 
 load_dotenv()
+
 
 class GraphState(TypedDict):
     code: str
@@ -23,12 +27,14 @@ class GraphState(TypedDict):
     reviewer_feedback: str
     attempts: int
 
-def split_code(code: str, lines_per_chunk: int = 250):
+
+def split_code(code: str, lines_per_chunk: int = 250) -> Generator[str, None, None]:
     lines = code.split('\n')
     for i in range(0, len(lines), lines_per_chunk):
         yield '\n'.join(lines[i:i + lines_per_chunk])
 
-def node_reader(state: GraphState):
+
+def node_reader(state: GraphState) -> Dict[str, Any]:
     if USE_MANUAL_MODE:
         print("\n" + "=" * 50)
         print("🔍 [MODO MANUAL] - AGENTE: READER")
@@ -40,7 +46,7 @@ def node_reader(state: GraphState):
         status = input("\nO Reader aprovou o contexto? (s/n): ").lower()
         if status == 'n':
             queries = input("Quais dúvidas o Reader gerou? (Cole aqui): ")
-            print(f"\n💡 [Ação]: Leve as dúvidas ao GPT 'SEARCHER' e cole a resposta abaixo.")
+            print(f"\n💡 [Ação]: Leve as seguintes dúvidas ao GPT 'SEARCHER' e cole a resposta abaixo:\n{queries}")
             contexto = input("Resposta do SEARCHER: ")
         else:
             contexto = "Código autossuficiente."
@@ -63,7 +69,7 @@ def node_reader(state: GraphState):
         return {"context": novo_contexto}
 
 
-def node_writer(state: GraphState):
+def node_writer(state: GraphState) -> Dict[str, Any]:
     if USE_MANUAL_MODE:
         print("\n" + "=" * 50)
         print("✍️ [MODO MANUAL] - AGENTE: WRITER")
@@ -87,8 +93,8 @@ def node_writer(state: GraphState):
         try:
             doc_dict = json.loads(raw_json)
             return {"documentation": doc_dict, "attempts": state.get("attempts", 0) + 1}
-        except Exception as e:
-            print(f"⚠️ Erro de formato no JSON: {e}. O sistema salvará como texto bruto.")
+        except Exception as json_err:
+            print(f"⚠️ Erro de formato no JSON: {json_err}. O sistema salvará como texto bruto.")
             return {"documentation": raw_json, "attempts": state.get("attempts", 0) + 1}
     else:
         print("\n" + "=" * 50)
@@ -112,8 +118,8 @@ def node_writer(state: GraphState):
                 else:
                     print(f"⚠️ Chunk {idx + 1} não retornou funções.")
 
-            except Exception as e:
-                print(f"⚠️ ERROR in chunk {idx + 1}: {e}")
+            except Exception as chunk_err:
+                print(f"⚠️ ERROR in chunk {idx + 1}: {chunk_err}")
 
         final_doc = FileDocumentation(functions=all_functions)
 
@@ -125,7 +131,7 @@ def node_writer(state: GraphState):
         }
 
 
-def node_verifier(state: GraphState):
+def node_verifier(state: GraphState) -> Dict[str, Any]:
     if USE_MANUAL_MODE:
         print("\n" + "=" * 50)
         print("⚖️ [MODO MANUAL] - AGENTE: VERIFIER")
@@ -141,6 +147,9 @@ def node_verifier(state: GraphState):
         print("\n" + "=" * 50)
         print("⚖️ [API] - AGENTE: VERIFIER")
 
+        if state["documentation"] is None:
+            return {"reviewer_feedback": "ERROR: No documentation generated to verify."}
+
         result = run_verifier_agent(state["code"], state["documentation"])
 
         print(f"\n💬 Verifier diz: {result.feedback_message}")
@@ -152,10 +161,12 @@ def node_verifier(state: GraphState):
 
         return {"reviewer_feedback": feedback}
 
-def decide_next_step(state: GraphState):
+
+def decide_next_step(state: GraphState) -> str:
     if state["reviewer_feedback"] == "APPROVED":
         return END
     return "writer" if state["attempts"] < 3 else END
+
 
 workflow = StateGraph(GraphState)
 
@@ -176,8 +187,8 @@ workflow.add_conditional_edges(
 app = workflow.compile()
 
 
-def process_single_file(github_url: str, requested_file_path: str):
-    print(f"🚀 Downloading : {github_url}")
+def process_single_file(github_url: str, requested_file_path: str, output_format: str = "pdf") -> Dict[str, Any]:
+    print(f"🚀 Downloading : {github_url} (Format requested: {output_format})")
     repo_files = load_cpp_from_github(github_url, target_dir="./tmp_repo")
 
     if not repo_files:
@@ -193,12 +204,12 @@ def process_single_file(github_url: str, requested_file_path: str):
         if not available_files:
             raise ValueError("❌ No C/C++ files found in the repository..")
 
-        requested_file_path = available_files[0]
+        requested_file_path = available_files[1]
         print(f"🧪 TESTE mode: using first available file: {requested_file_path}")
 
     selected_file_content = repo_files[requested_file_path]
 
-    initial_state = {
+    initial_state: GraphState = {
         "code": selected_file_content,
         "context": f"Path: {requested_file_path}",
         "documentation": None,
@@ -220,33 +231,46 @@ def process_single_file(github_url: str, requested_file_path: str):
         safe_filename = os.path.basename(requested_file_path)
         safe_filename = safe_filename.replace(".cpp", "").replace(".hpp", "").replace(".h", "")
 
-        os.makedirs("pdfs", exist_ok=True)
-        pdf_filename = f"Doc_WaveCast_{safe_filename}.pdf"
-        pdf_path = os.path.join("pdfs", pdf_filename)
+        raw_basename = os.path.basename(requested_file_path)
+        safe_filename = Path(raw_basename).stem
 
-        export_doc_to_pdf(
+        pdf_dir = Path("pdfs")
+        markdown_dir = Path("markdowns")
+        data_dir = Path("data")
+
+        pdf_dir.mkdir(parents=True, exist_ok=True)
+        markdown_dir.mkdir(parents=True, exist_ok=True)
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+        array_functions = doc_dict.get("functions", [])
+
+        pdf_exporter = ExporterFactory.get_exporter("pdf")
+        pdf_filename = pdf_exporter.export(
             doc_data=doc_dict,
-            file_name=requested_file_path,
-            output_path=pdf_path
+            safe_filename=safe_filename,
+            output_dir=str(pdf_dir)
         )
 
-        os.makedirs("data", exist_ok=True)
-        json_filename = f"{safe_filename}.json"
-        json_path = os.path.join("data", json_filename)
+        markdown_exporter = ExporterFactory.get_exporter("markdown")
+        markdown_filename = markdown_exporter.export(
+            doc_data=doc_dict,
+            safe_filename=safe_filename,
+            output_dir=str(markdown_dir)
+        )
 
-        array_de_funcoes = doc_dict.get("functions", [])
+        json_filename = f"{safe_filename}.json"
+        json_path = data_dir / json_filename
 
         with open(json_path, "w", encoding="utf-8") as f:
-            json.dump(array_de_funcoes, f, indent=2, ensure_ascii=False)
+            json.dump(array_functions, f, indent=2, ensure_ascii=False)
 
         return {
             "file": requested_file_path,
             "status": "success",
-            "pdf_filename": pdf_filename,
-            "json_filename": json_filename,
-            "pdf_url": f"http://localhost:8000/pdfs/{pdf_filename}",
-            "json_url": f"http://localhost:8000/data/{json_filename}",
-            "documentation": array_de_funcoes
+            "pdf_url": f"/pdfs/{pdf_filename}",
+            "markdown_url": f"/markdowns/{markdown_filename}",
+            "json_url": f"/data/{json_filename}",
+            "documentation": array_functions
         }
     else:
         raise RuntimeError("Failed to generate documentation.")

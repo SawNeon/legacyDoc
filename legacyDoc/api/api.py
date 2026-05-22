@@ -19,29 +19,39 @@ app.add_middleware(
     allow_headers=["*"],
 )
 os.makedirs("pdfs", exist_ok=True)
+os.makedirs("markdowns", exist_ok=True)
+os.makedirs("data", exist_ok=True)
 
 app.mount("/pdfs", StaticFiles(directory="pdfs"), name="pdfs")
+app.mount("/markdowns", StaticFiles(directory="markdowns"), name="markdowns")
+app.mount("/data", StaticFiles(directory="data"), name="data")
 
 class DocumentRequest(BaseModel):
     github_url: str
     file_path: str
+    output_format: str = "pdf"
 
 @app.post("/api/generate")
 async def generate_documentation(request: DocumentRequest):
     print(f"📡 Request received via API for the file: {request.file_path}")
 
     try:
-        result = process_single_file(request.github_url, request.file_path)
+        result = process_single_file(request.github_url, request.file_path, request.output_format)
 
         return {
             "status": "success",
             "file": result["file"],
             "documentation": result["documentation"],
-            "pdf_url": f"/pdfs/{result['pdf_filename']}"
+            "pdf_url": result["pdf_url"],
+            "markdown_url": result["markdown_url"],
+            "json_url": result["json_url"]
         }
+    except FileNotFoundError as fnf_error:
+        print(f"⚠️ Warning: {fnf_error}")
+        raise HTTPException(status_code=404, detail=str(fnf_error))
     except Exception as e:
-        print(f"Erro na API: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Error in API: {e}")
+        raise HTTPException(status_code=500, detail="Error processing.")
 
 
 @app.get("/api/dashboard/stats")
@@ -51,12 +61,15 @@ async def get_dashboard_stats():
 
     for file in json_files:
         if file.endswith(".json"):
-            with open(f"data/{file}", "r", encoding="utf-8") as f:
-                function_arrey = json.load(f)
-                all_data.append({
-                    "nome_do_arquivo": file.replace(".json", ""),
-                    "funcoes": function_arrey
-                })
+            try:
+                with open(f"data/{file}", "r", encoding="utf-8") as f:
+                    function_array = json.load(f)
+                    all_data.append({
+                        "nome_do_arquivo": file.replace(".json", ""),
+                        "funcoes": function_array
+                    })
+            except Exception as e:
+                print(f"Erro ao ler arquivo {file}: {e}")
 
     return {
         "total_modules": len(all_data),

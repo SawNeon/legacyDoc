@@ -1,0 +1,13 @@
+[
+  {
+    "name": "my_application_new",
+    "kind": "function",
+    "signature": "MyApplication* my_application_new();",
+    "return_type": "MyApplication*",
+    "return_description": "A new instance of MyApplication.",
+    "args": [],
+    "summary": "Cria uma nova aplicação baseada em Flutter.",
+    "description": "Olá, Time LEGACY DOC! Neste contexto, estou criando uma nova aplicação baseada em Flutter. Ao chamar esta função, um novo objeto MyApplication é instanciado e retornado, permitindo que eu inicie a aplicação com a estrutura necessária. Isso é fundamental para o funcionamento do aplicativo.",
+    "raises": []
+  }
+]
