@@ -1,51 +1,84 @@
-# tools/github_loader.py
 import os
 import shutil
 import stat
 import uuid
+from pathlib import Path
+from urllib.parse import urlparse
 
 from git import Repo
+
+ALLOWED_HOSTS = {"github.com", "www.github.com"}
+SOURCE_EXTENSIONS = (".cpp", ".hpp", ".h", ".c")
+MAX_FILE_BYTES = int(os.getenv("MAX_SOURCE_FILE_BYTES", str(512 * 1024)))
+
 
 def remove_readonly(func, path, _):
     os.chmod(path, stat.S_IWRITE)
     func(path)
 
 
-def load_cpp_from_github(repo_url: str, target_dir: str = "./cloned_repo") -> dict:
-    unique_id = uuid.uuid4().hex[:8]
-    session_dir = f"{target_dir}_{unique_id}"
+def validate_repo_url(repo_url: str) -> None:
+    parsed = urlparse(repo_url)
 
-    print(f": Cloning repository {repo_url}...")
+    if parsed.scheme != "https":
+        raise ValueError("Only HTTPS GitHub repository URLs are supported.")
 
-    if os.path.exists(session_dir):
-        print(f"🧹 Cleaning up existing directory...")
-        try:
-            shutil.rmtree(session_dir, onerror=remove_readonly)  # Python <= 3.11
-        except TypeError:
-            shutil.rmtree(session_dir, onexc=remove_readonly)
+    if parsed.netloc.lower() not in ALLOWED_HOSTS:
+        raise ValueError("Only github.com repository URLs are supported.")
 
-    Repo.clone_from(repo_url, session_dir)
-    print("✅ Clone completo! scanning files C/C++...")
+    if not parsed.path.strip("/"):
+        raise ValueError("Invalid GitHub repository URL.")
 
-    cpp_files = {}
 
-    for root, dirs, files in os.walk(session_dir):
-        for file in files:
-            if file.endswith((".cpp", ".hpp", ".h", ".c")):
-                full_path = os.path.join(root, file)
-                try:
-                    with open(full_path, "r", encoding="utf-8") as f:
-                        content = f.read()
-                        relative_path = os.path.relpath(full_path, session_dir)
-                        cpp_files[relative_path] = content
-                except Exception as e:
-                    print(f"⚠️ [GitHub Loader]: Erro ao ler {file}: {e}")
+def cleanup_session_dir(session_dir: Path) -> None:
+    if not session_dir.exists():
+        return
 
     try:
         shutil.rmtree(session_dir, onerror=remove_readonly)
     except TypeError:
         shutil.rmtree(session_dir, onexc=remove_readonly)
-    except Exception as e:
-        print(f"⚠️ [GitHub Loader]: Warning - We were unable to delete the temporary folder: {e}")
+    except Exception as exc:
+        print(f"[GitHub Loader]: Could not delete temporary folder: {exc}")
 
-    return cpp_files
+
+def load_cpp_from_github(repo_url: str, target_dir: str = "./cloned_repo") -> dict:
+    validate_repo_url(repo_url)
+
+    unique_id = uuid.uuid4().hex[:8]
+    session_dir = Path(f"{target_dir}_{unique_id}").resolve()
+    session_dir.parent.mkdir(parents=True, exist_ok=True)
+
+    print(f"Cloning repository {repo_url}...")
+
+    cleanup_session_dir(session_dir)
+
+    try:
+        Repo.clone_from(repo_url, session_dir, multi_options=["--depth=1"])
+        print("Clone complete. Scanning C/C++ files...")
+
+        cpp_files = {}
+
+        for root, _, files in os.walk(session_dir):
+            for file_name in files:
+                if not file_name.endswith(SOURCE_EXTENSIONS):
+                    continue
+
+                full_path = Path(root) / file_name
+
+                try:
+                    if full_path.stat().st_size > MAX_FILE_BYTES:
+                        print(f"[GitHub Loader]: Skipping large file {file_name}")
+                        continue
+
+                    content = full_path.read_text(encoding="utf-8")
+                    relative_path = os.path.relpath(full_path, session_dir)
+                    cpp_files[relative_path] = content
+                except UnicodeDecodeError:
+                    print(f"[GitHub Loader]: Skipping non UTF-8 file {file_name}")
+                except Exception as exc:
+                    print(f"[GitHub Loader]: Error reading {file_name}: {exc}")
+
+        return cpp_files
+    finally:
+        cleanup_session_dir(session_dir)

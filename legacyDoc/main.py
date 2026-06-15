@@ -1,6 +1,7 @@
-# main.py
 import os
 import json
+import re
+import sys
 from dotenv import load_dotenv
 from typing import TypedDict, Optional, Any, Dict, Generator
 from langgraph.graph import StateGraph, END
@@ -13,11 +14,27 @@ from agents.writer import run_writer_agent
 from agents.verifier import run_verifier_agent
 from core.schemas import FileDocumentation
 
+load_dotenv()
+
 BASE_DIR = Path(__file__).resolve().parent
+DATA_ROOT = Path(os.getenv("LEGACYDOC_DATA_DIR", BASE_DIR / "storage")).resolve()
+TMP_ROOT = Path(os.getenv("LEGACYDOC_TMP_DIR", BASE_DIR / "tmp")).resolve()
+LINES_PER_CHUNK = int(os.getenv("LEGACYDOC_LINES_PER_CHUNK", "150"))
+MAX_REVIEW_ATTEMPTS = int(os.getenv("LEGACYDOC_MAX_REVIEW_ATTEMPTS", "1"))
 
 USE_MANUAL_MODE = False
 
-load_dotenv()
+
+def safe_print(message: Any = "") -> None:
+    output_encoding = sys.stdout.encoding or "utf-8"
+    safe_message = str(message).encode(output_encoding, errors="replace").decode(output_encoding)
+    print(safe_message)
+
+
+def sanitize_filename(file_path: str) -> str:
+    safe_filename = Path(os.path.basename(file_path)).stem
+    safe_filename = re.sub(r"[^A-Za-z0-9._-]+", "_", safe_filename).strip("._-")
+    return safe_filename or "documentation"
 
 
 class GraphState(TypedDict):
@@ -37,7 +54,7 @@ def split_code(code: str, lines_per_chunk: int = 250) -> Generator[str, None, No
 def node_reader(state: GraphState) -> Dict[str, Any]:
     if USE_MANUAL_MODE:
         print("\n" + "=" * 50)
-        print("🔍 [MODO MANUAL] - AGENTE: READER")
+        print("[MODO MANUAL] - AGENTE: READER")
         print("COPIE O CÓDIGO ABAIXO PARA O SEU GPT 'READER':")
         print("-" * 30)
         print(state["code"])
@@ -46,7 +63,7 @@ def node_reader(state: GraphState) -> Dict[str, Any]:
         status = input("\nO Reader aprovou o contexto? (s/n): ").lower()
         if status == 'n':
             queries = input("Quais dúvidas o Reader gerou? (Cole aqui): ")
-            print(f"\n💡 [Ação]: Leve as seguintes dúvidas ao GPT 'SEARCHER' e cole a resposta abaixo:\n{queries}")
+            print(f"\n[Acao]: Leve as seguintes duvidas ao GPT 'SEARCHER' e cole a resposta abaixo:\n{queries}")
             contexto = input("Resposta do SEARCHER: ")
         else:
             contexto = "Código autossuficiente."
@@ -54,11 +71,11 @@ def node_reader(state: GraphState) -> Dict[str, Any]:
         return {"context": contexto}
     else:
         print("\n" + "=" * 50)
-        print("🔍 [API] - AGENTE: READER")
+        print("[API] - AGENTE: READER")
 
         result = run_reader_agent(state["code"])
 
-        print(f"\n💬 Reader diz: {result.user_facing_message}")
+        safe_print(f"\nReader diz: {result.user_facing_message}")
 
         novo_contexto = state["context"]
         if not result.ready_to_write:
@@ -72,9 +89,9 @@ def node_reader(state: GraphState) -> Dict[str, Any]:
 def node_writer(state: GraphState) -> Dict[str, Any]:
     if USE_MANUAL_MODE:
         print("\n" + "=" * 50)
-        print("✍️ [MODO MANUAL] - AGENTE: WRITER")
+        print("[MODO MANUAL] - AGENTE: WRITER")
         if state.get("reviewer_feedback") and state["reviewer_feedback"] != "APPROVED":
-            print(f"❌ REVISÃO SOLICITADA PELO VERIFIER:\n{state['reviewer_feedback']}")
+            print(f"REVISAO SOLICITADA PELO VERIFIER:\n{state['reviewer_feedback']}")
 
         print(f"\nCONTEXTO PARA O WRITER: {state['context']}")
 
@@ -94,21 +111,21 @@ def node_writer(state: GraphState) -> Dict[str, Any]:
             doc_dict = json.loads(raw_json)
             return {"documentation": doc_dict, "attempts": state.get("attempts", 0) + 1}
         except Exception as json_err:
-            print(f"⚠️ Erro de formato no JSON: {json_err}. O sistema salvará como texto bruto.")
+            print(f"Erro de formato no JSON: {json_err}. O sistema salvara como texto bruto.")
             return {"documentation": raw_json, "attempts": state.get("attempts", 0) + 1}
     else:
         print("\n" + "=" * 50)
-        print("✍️ [API] - AGENTE: WRITER")
+        print("[API] - AGENTE: WRITER")
 
         full_code = state["code"]
         current_context = state["context"]
         all_functions = []
 
-        chunks = list(split_code(full_code, lines_per_chunk=50))
+        chunks = list(split_code(full_code, lines_per_chunk=LINES_PER_CHUNK))
         total_chunks = len(chunks)
 
         for idx, chunk in enumerate(chunks):
-            print(f"📦 Processed chunk {idx + 1} de {total_chunks}...")
+            print(f"Processed chunk {idx + 1} de {total_chunks}...")
 
             try:
                 result = run_writer_agent(chunk, current_context)
@@ -116,14 +133,14 @@ def node_writer(state: GraphState) -> Dict[str, Any]:
                 if result and hasattr(result, "functions"):
                     all_functions.extend(result.functions)
                 else:
-                    print(f"⚠️ Chunk {idx + 1} não retornou funções.")
+                    print(f"Chunk {idx + 1} nao retornou funcoes.")
 
             except Exception as chunk_err:
-                print(f"⚠️ ERROR in chunk {idx + 1}: {chunk_err}")
+                safe_print(f"ERROR in chunk {idx + 1}: {chunk_err}")
 
         final_doc = FileDocumentation(functions=all_functions)
 
-        print(f"✅ Writer finalizou com {len(all_functions)} funções documentadas.")
+        print(f"Writer finalizou com {len(all_functions)} funcoes documentadas.")
 
         return {
             "documentation": final_doc,
@@ -134,7 +151,7 @@ def node_writer(state: GraphState) -> Dict[str, Any]:
 def node_verifier(state: GraphState) -> Dict[str, Any]:
     if USE_MANUAL_MODE:
         print("\n" + "=" * 50)
-        print("⚖️ [MODO MANUAL] - AGENTE: VERIFIER")
+        print("[MODO MANUAL] - AGENTE: VERIFIER")
         print("SUBMETA A DOCUMENTAÇÃO E O CÓDIGO AO GPT 'VERIFIER'.")
 
         aprovado = input("\nFoi aprovado? (s/n): ").lower()
@@ -145,14 +162,14 @@ def node_verifier(state: GraphState) -> Dict[str, Any]:
             return {"reviewer_feedback": feedback}
     else:
         print("\n" + "=" * 50)
-        print("⚖️ [API] - AGENTE: VERIFIER")
+        print("[API] - AGENTE: VERIFIER")
 
         if state["documentation"] is None:
             return {"reviewer_feedback": "ERROR: No documentation generated to verify."}
 
         result = run_verifier_agent(state["code"], state["documentation"])
 
-        print(f"\n💬 Verifier diz: {result.feedback_message}")
+        safe_print(f"\nVerifier diz: {result.feedback_message}")
 
         if result.approved:
             feedback = "APPROVED"
@@ -165,7 +182,7 @@ def node_verifier(state: GraphState) -> Dict[str, Any]:
 def decide_next_step(state: GraphState) -> str:
     if state["reviewer_feedback"] == "APPROVED":
         return END
-    return "writer" if state["attempts"] < 3 else END
+    return "writer" if state["attempts"] < MAX_REVIEW_ATTEMPTS else END
 
 
 workflow = StateGraph(GraphState)
@@ -188,13 +205,14 @@ app = workflow.compile()
 
 
 def process_single_file(github_url: str, requested_file_path: str, output_format: str = "pdf") -> Dict[str, Any]:
-    print(f"🚀 Downloading : {github_url} (Format requested: {output_format})")
-    repo_files = load_cpp_from_github(github_url, target_dir="./tmp_repo")
+    print(f"Downloading: {github_url} (Format requested: {output_format})")
+    TMP_ROOT.mkdir(parents=True, exist_ok=True)
+    repo_files = load_cpp_from_github(github_url, target_dir=str(TMP_ROOT / "repo"))
 
     if not repo_files:
         raise ValueError("Empty repository or clone failed.")
 
-    print(f"📄 Files C/C++ concentrates: {len(repo_files)}")
+    print(f"Files C/C++ found: {len(repo_files)}")
     for path in list(repo_files.keys())[:10]:
         print(f" - {path}")
 
@@ -202,10 +220,13 @@ def process_single_file(github_url: str, requested_file_path: str, output_format
         available_files = list(repo_files.keys())
 
         if not available_files:
-            raise ValueError("❌ No C/C++ files found in the repository..")
+            raise ValueError("No C/C++ files found in the repository.")
 
-        requested_file_path = available_files[1]
-        print(f"🧪 TESTE mode: using first available file: {requested_file_path}")
+        requested_file_path = available_files[0]
+        print(f"TESTE mode: using first available file: {requested_file_path}")
+
+    if requested_file_path not in repo_files:
+        raise FileNotFoundError(f"File not found in repository: {requested_file_path}")
 
     selected_file_content = repo_files[requested_file_path]
 
@@ -228,15 +249,11 @@ def process_single_file(github_url: str, requested_file_path: str, output_format
         else:
             doc_dict = {"functions": []}
 
-        safe_filename = os.path.basename(requested_file_path)
-        safe_filename = safe_filename.replace(".cpp", "").replace(".hpp", "").replace(".h", "")
+        safe_filename = sanitize_filename(requested_file_path)
 
-        raw_basename = os.path.basename(requested_file_path)
-        safe_filename = Path(raw_basename).stem
-
-        pdf_dir = Path("pdfs")
-        markdown_dir = Path("markdowns")
-        data_dir = Path("data")
+        pdf_dir = DATA_ROOT / "pdfs"
+        markdown_dir = DATA_ROOT / "markdowns"
+        data_dir = DATA_ROOT / "data"
 
         pdf_dir.mkdir(parents=True, exist_ok=True)
         markdown_dir.mkdir(parents=True, exist_ok=True)
@@ -278,10 +295,10 @@ def process_single_file(github_url: str, requested_file_path: str, output_format
 
 if __name__ == "__main__":
     url_teste = "https://github.com/dosbox-staging/dosbox-staging.git"
-    print("🚀 Starting test in the terminal (Getting file [3])...")
+    print("Starting test in the terminal (Getting file [3])...")
     try:
         resultado = process_single_file(url_teste, "TESTE")
-        print("\n✅ SUCCESS! PDF saved and JSON returned.:")
+        print("\nSUCCESS! PDF saved and JSON returned:")
         print(json.dumps(resultado["documentation"], indent=2))
     except Exception as e:
-        print(f"❌ Erro: {e}")
+        print(f"Erro: {e}")

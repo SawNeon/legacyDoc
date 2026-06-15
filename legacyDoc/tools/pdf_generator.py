@@ -111,4 +111,4 @@ def export_doc_to_pdf(doc_data: dict, file_name: str, output_path: str = "docume
             pdf.ln(5)
 
     pdf.output(output_path)
-    print(f"\n📑 [PDF Generator]: Successful ! PDF save pdf in: '{output_path}'")
+    print(f"\n[PDF Generator]: Successful! PDF saved in: '{output_path}'")

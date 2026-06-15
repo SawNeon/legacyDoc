@@ -27,7 +27,7 @@ class PdfExporter(DocumentExporter):
         if not pdf_path.exists():
             raise RuntimeError(f"The PDF was not found after generation: {pdf_path.resolve()}")
 
-        print(f"✅ PDF created in: {pdf_path.resolve()}")
+        print(f"PDF created in: {pdf_path.resolve()}")
 
         return pdf_filename
 
@@ -112,7 +112,7 @@ class MarkdownExporter(DocumentExporter):
         if not md_path.exists():
             raise RuntimeError(f"The Markdown was not found after generation: {md_path.resolve()}")
 
-        print(f"✅ Markdown created in: {md_path.resolve()}")
+        print(f"Markdown created in: {md_path.resolve()}")
 
         return md_filename
 

@@ -53,7 +53,7 @@ def run_verifier_agent(cpp_code: str, documentation: FileDocumentation) -> Verif
     ])
 
     chain = prompt | structured_llm
-    print("⚖️  [Verifier Agent]: Realizando auditoria técnica e comportamental (Legacy Doc Standards)...")
+    print("[Verifier Agent]: Realizando auditoria tecnica e comportamental (Legacy Doc Standards)...")
 
     doc_json_str = documentation.model_dump_json()
 

@@ -56,7 +56,7 @@ def run_writer_agent(cpp_code: str, extra_context: str = "") -> FileDocumentatio
 
     chain = prompt | structured_llm
 
-    print("✍️  [Writer Agent]: Analisando código e redigindo documentação humanizada (Legacy Doc Standards)...")
+    print("[Writer Agent]: Analisando codigo e redigindo documentacao humanizada (Legacy Doc Standards)...")
 
 
     return chain.invoke({"code": cpp_code, "context": extra_context})

@@ -56,6 +56,6 @@ def run_reader_agent(cpp_code: str) -> ReaderOutput:
 
     chain = prompt | structured_llm
 
-    print("🔍 [Reader Agent]: Fazendo o raio-X técnico do código via API OpenAI...")
+    print("[Reader Agent]: Fazendo o raio-X tecnico do codigo via API OpenAI...")
 
     return chain.invoke({"code": cpp_code})
