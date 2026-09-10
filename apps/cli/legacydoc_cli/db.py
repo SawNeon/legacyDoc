@@ -22,6 +22,7 @@ from legacydoc_core.settings import Settings, get_settings
 from sqlalchemy import func, inspect, select, text
 
 from legacydoc_cli.console import Style, section
+from legacydoc_cli.seed import register as register_seed_demo
 
 EXPECTED_TABLES = {
     "users",
@@ -282,6 +283,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--update", action="store_true", help="Se a conta existir, apenas troca o plano"
     )
     create_user.set_defaults(handler=command_create_user)
+
+    register_seed_demo(subcommands)
 
     return parser
 
