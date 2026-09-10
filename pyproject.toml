@@ -1,0 +1,91 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "legacydoc"
+version = "2.0.0"
+description = "Documentacao automatica multi-linguagem com orquestracao multi-agente e multi-provedor"
+requires-python = ">=3.11"
+dependencies = [
+    # HTTP
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "python-multipart>=0.0.9",
+    # Config e validacao
+    "pydantic>=2.9",
+    "pydantic-settings>=2.6",
+    # Persistencia
+    "sqlalchemy[asyncio]>=2.0.36",
+    "asyncpg>=0.30",
+    "alembic>=1.14",
+    # Auth
+    "pyjwt>=2.9",
+    "pwdlib[argon2]>=0.2.1",
+    # Provedores de LLM
+    "openai>=1.55",
+    "anthropic>=0.40",
+    "google-genai>=0.3",
+    # Parsing multi-linguagem
+    "tree-sitter>=0.23",
+    "tree-sitter-language-pack>=0.7",
+    # Ingestao e exportacao
+    "gitpython>=3.1.43",
+    "fpdf2>=2.8",
+    "httpx>=0.27",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.8",
+    "mypy>=1.13",
+    "aiosqlite>=0.20",
+]
+
+[project.scripts]
+legacydoc-api = "legacydoc_api.__main__:main"
+legacydoc-worker = "legacydoc_worker.__main__:main"
+legacydoc-smoke = "legacydoc_cli.smoke:main"
+legacydoc-migrate-v1 = "legacydoc_cli.migrate_v1:main"
+legacydoc-db = "legacydoc_cli.db:main"
+
+[tool.setuptools.packages.find]
+where = [
+    "packages/core",
+    "packages/providers",
+    "packages/parsing",
+    "packages/agents",
+    "packages/exporters",
+    "apps/api",
+    "apps/worker",
+    "apps/cli",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+# Codigo da v1, mantido apenas como referencia durante a migracao.
+exclude = ["legacyDoc", "Front", ".venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+# B008 proibe chamada de funcao em valor padrao de argumento, mas `Depends(...)`
+# e `Query(...)` do FastAPI sao exatamente isso por design.
+ignore = ["B008"]
+
+[tool.ruff.lint.per-file-ignores]
+# Os prompts dos agentes sao texto corrido; quebrar linha muda o que o modelo le.
+"packages/agents/legacydoc_agents/prompts.py" = ["E501"]
+# Migrations sao geradas com colunas longas por convencao do Alembic.
+"migrations/versions/*.py" = ["E501"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_unused_ignores = true
+ignore_missing_imports = true

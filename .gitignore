@@ -1,0 +1,24 @@
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.log
+var/
+node_modules/
+.idea/
+.vscode/
+
+# Repositorios da v1, com historico proprio. Mantidos como referencia durante a
+# migracao; incluir aqui os transformaria em submodulos fantasma.
+/legacyDoc/
+/Front/
+/DEPLOY.md

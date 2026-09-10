@@ -1,0 +1,390 @@
+"""Testes do orquestrador e da selecao de contexto.
+
+Cobrem o defeito silencioso da v1: `MAX_REVIEW_ATTEMPTS=1` com o Writer ja
+saindo em `attempts=1` fazia `attempts < MAX` ser sempre falso. O Verifier
+rodava no modelo mais caro do pipeline e o resultado era descartado - nenhuma
+reescrita jamais acontecia.
+"""
+
+from __future__ import annotations
+
+from legacydoc_agents import DocumentationPipeline, PipelineOptions
+from legacydoc_agents.context_selector import (
+    ContextCandidate,
+    render_context,
+    select_context,
+)
+from legacydoc_core.domain import (
+    FindingDraft,
+    ImproverOutput,
+    SymbolDoc,
+    VerifierOutput,
+    WriterOutput,
+)
+from legacydoc_core.plans import PlanTier, get_plan
+from legacydoc_parsing import detect_language
+from legacydoc_providers.base import StructuredResult, Usage
+from legacydoc_providers.router import AgentRole
+
+SOURCE = (
+    "def somar(a, b):\n"
+    "    return a + b\n"
+    "\n"
+    "def dividir(a, b):\n"
+    "    if b == 0:\n"
+    "        raise ValueError('divisao por zero')\n"
+    "    return a / b\n"
+)
+
+
+def _symbol(name: str, description: str = "Descricao original.") -> SymbolDoc:
+    return SymbolDoc(
+        name=name,
+        kind="function",
+        signature=f"def {name}(a, b)",
+        language="python",
+        summary=f"Resumo de {name}.",
+        description=description,
+    )
+
+
+class ScriptedRouter:
+    """Roteador falso: devolve respostas programadas por papel."""
+
+    def __init__(self, responses: dict[AgentRole, list]) -> None:
+        self._responses = {role: list(items) for role, items in responses.items()}
+        self.calls: list[AgentRole] = []
+
+    async def complete(self, role, *, system, user, schema):
+        self.calls.append(role)
+        queue = self._responses.get(role)
+
+        if not queue:
+            raise AssertionError(f"papel {role} chamado sem resposta programada")
+
+        value = queue.pop(0) if len(queue) > 1 else queue[0]
+
+        return StructuredResult(
+            value=value,
+            provider="fake",
+            model="fake-model",
+            usage=Usage(10, 10),
+            latency_ms=1,
+        )
+
+    def count(self, role: AgentRole) -> int:
+        return sum(1 for item in self.calls if item == role)
+
+
+def _reader_ok():
+    from pydantic import BaseModel
+
+    class ReaderOutput(BaseModel):
+        ready_to_write: bool = True
+        queries: str = ""
+        user_facing_message: str = ""
+
+    return ReaderOutput()
+
+
+async def _run(router, plan_tier: PlanTier, *, options: PipelineOptions | None = None):
+    pipeline = DocumentationPipeline(
+        router,
+        get_plan(plan_tier),
+        options or PipelineOptions(generate_summary=False),
+    )
+
+    return await pipeline.run(
+        path="calc.py",
+        source=SOURCE,
+        language=detect_language("calc.py"),
+    )
+
+
+async def test_free_plan_documents_without_findings_or_verifier():
+    router = ScriptedRouter(
+        {
+            AgentRole.READER: [_reader_ok()],
+            AgentRole.WRITER: [WriterOutput(symbols=[_symbol("somar"), _symbol("dividir")])],
+        }
+    )
+
+    result = await _run(router, PlanTier.FREE)
+
+    assert {s.name for s in result.documentation.symbols} == {"somar", "dividir"}
+    assert result.documentation.findings == []
+    assert router.count(AgentRole.IMPROVER) == 0
+    assert router.count(AgentRole.VERIFIER) == 0, "plano Free nao paga pelo modelo caro"
+
+
+async def test_pro_plan_runs_improver_and_verifier():
+    router = ScriptedRouter(
+        {
+            AgentRole.READER: [_reader_ok()],
+            AgentRole.WRITER: [WriterOutput(symbols=[_symbol("somar")])],
+            AgentRole.IMPROVER: [
+                ImproverOutput(
+                    findings=[
+                        FindingDraft(
+                            category="correctness",
+                            severity="medium",
+                            title="Sem validacao de tipo",
+                            detail="Aceita qualquer coisa somavel.",
+                        )
+                    ]
+                )
+            ],
+            AgentRole.VERIFIER: [
+                VerifierOutput(approved=True, audit_notes="ok", feedback_message="Aprovado.")
+            ],
+        }
+    )
+
+    result = await _run(router, PlanTier.PRO)
+
+    assert len(result.documentation.findings) == 1
+    assert result.verifier_approved is True
+    assert router.count(AgentRole.VERIFIER) == 1
+
+
+async def test_rejected_symbols_are_actually_rewritten():
+    """O bug da v1: o Verifier reprovava e nada era reescrito."""
+    router = ScriptedRouter(
+        {
+            AgentRole.READER: [_reader_ok()],
+            AgentRole.WRITER: [
+                WriterOutput(symbols=[_symbol("somar", "Descricao errada.")]),
+                WriterOutput(symbols=[_symbol("somar", "Descricao corrigida.")]),
+            ],
+            AgentRole.IMPROVER: [ImproverOutput()],
+            AgentRole.VERIFIER: [
+                VerifierOutput(
+                    approved=False,
+                    rejected_symbols=["somar"],
+                    audit_notes="A descricao cita um parametro inexistente.",
+                    feedback_message="Precisa ajustar.",
+                ),
+                VerifierOutput(approved=True, audit_notes="ok", feedback_message="Aprovado."),
+            ],
+        }
+    )
+
+    result = await _run(
+        router, PlanTier.PRO, options=PipelineOptions(generate_summary=False, max_review_rounds=1)
+    )
+
+    assert result.review_rounds == 1
+    assert result.documentation.symbols[0].description == "Descricao corrigida."
+    assert router.count(AgentRole.WRITER) == 2
+
+
+async def test_review_stops_after_max_rounds():
+    stubborn = VerifierOutput(
+        approved=False,
+        rejected_symbols=["somar"],
+        audit_notes="continua errado",
+        feedback_message="Ainda nao.",
+    )
+    router = ScriptedRouter(
+        {
+            AgentRole.READER: [_reader_ok()],
+            AgentRole.WRITER: [WriterOutput(symbols=[_symbol("somar")])],
+            AgentRole.IMPROVER: [ImproverOutput()],
+            AgentRole.VERIFIER: [stubborn],
+        }
+    )
+
+    result = await _run(
+        router, PlanTier.PRO, options=PipelineOptions(generate_summary=False, max_review_rounds=1)
+    )
+
+    assert result.verifier_approved is False
+    assert any("sobreviveram" in warning for warning in result.warnings)
+    assert router.count(AgentRole.VERIFIER) == 2, "nao pode entrar em loop infinito"
+
+
+async def test_parser_data_overrides_model_guesses():
+    """Linhas e complexidade vem da AST, que e verificavel e nao custa token."""
+    router = ScriptedRouter(
+        {
+            AgentRole.READER: [_reader_ok()],
+            AgentRole.WRITER: [WriterOutput(symbols=[_symbol("dividir")])],
+        }
+    )
+
+    result = await _run(router, PlanTier.FREE)
+    dividir = result.documentation.symbols[0]
+
+    assert dividir.line_start == 4
+    assert dividir.complexity_estimate is not None and dividir.complexity_estimate > 1
+
+
+async def test_findings_are_sorted_by_severity():
+    router = ScriptedRouter(
+        {
+            AgentRole.READER: [_reader_ok()],
+            AgentRole.WRITER: [WriterOutput(symbols=[_symbol("somar")])],
+            AgentRole.IMPROVER: [
+                ImproverOutput(
+                    findings=[
+                        FindingDraft(category="testing", severity="low", title="Baixo", detail="d"),
+                        FindingDraft(
+                            category="security", severity="critical", title="Critico", detail="d"
+                        ),
+                    ]
+                )
+            ],
+            AgentRole.VERIFIER: [
+                VerifierOutput(approved=True, audit_notes="ok", feedback_message="ok")
+            ],
+        }
+    )
+
+    result = await _run(router, PlanTier.PRO)
+
+    assert [f.title for f in result.documentation.findings] == ["Critico", "Baixo"]
+
+
+async def test_empty_file_returns_warning_not_crash():
+    router = ScriptedRouter({AgentRole.READER: [_reader_ok()]})
+
+    pipeline = DocumentationPipeline(router, get_plan(PlanTier.FREE))
+    result = await pipeline.run(path="v.py", source="\n", language=detect_language("v.py"))
+
+    assert result.documentation.symbols == []
+    assert result.warnings
+
+
+# ---------------------------------------------------------- contexto
+
+
+def _candidate(**kwargs) -> ContextCandidate:
+    defaults = {
+        "id": "1",
+        "kind": "glossary",
+        "title": "Termo",
+        "content": "conteudo",
+        "path_globs": (),
+        "tags": (),
+        "weight": 100,
+    }
+    return ContextCandidate(**{**defaults, "id": kwargs.pop("id", "1"), **kwargs})
+
+
+def test_glob_targets_the_right_files():
+    auth = _candidate(id="a", title="Auth", content="tokens", path_globs=("src/auth/**",))
+    billing = _candidate(id="b", title="Billing", content="faturas", path_globs=("src/billing/**",))
+
+    chosen = select_context(
+        [auth, billing], file_path="src/auth/login.py", code_sample="def x(): pass"
+    )
+
+    assert [item.id for item in chosen] == ["a"], "glob que nao casa e um 'nao' explicito"
+
+
+def test_lexical_overlap_ranks_relevant_context_first():
+    relevante = _candidate(id="r", title="Pagamento", content="fatura pagamento cobranca invoice")
+    irrelevante = _candidate(id="i", title="Mapas", content="latitude longitude geocodificacao")
+
+    chosen = select_context(
+        [irrelevante, relevante],
+        file_path="src/invoice.py",
+        code_sample="def gerar_invoice(pagamento, cobranca): pass",
+    )
+
+    assert chosen[0].id == "r"
+
+
+def test_selection_respects_the_character_budget():
+    grandes = [_candidate(id=str(i), content="palavra " * 500) for i in range(10)]
+
+    chosen = select_context(grandes, file_path="a.py", code_sample="palavra", max_chars=2000)
+
+    assert sum(len(item.content) for item in chosen) <= 2000
+
+
+def test_render_context_is_empty_without_items():
+    assert render_context([]) == ""
+
+
+def test_render_context_labels_each_item_by_kind():
+    rendered = render_context([_candidate(kind="convention", title="Estilo", content="snake_case")])
+
+    assert "[convention] Estilo" in rendered
+    assert "snake_case" in rendered
+
+
+async def test_invented_symbol_is_discarded():
+    """O parser sabe quais simbolos existem; alucinacao nao pode ser persistida.
+
+    Sem este filtro o modelo inventava uma funcao e ela virava documentacao
+    real no banco, com line_start=0.
+    """
+    router = ScriptedRouter(
+        {
+            AgentRole.READER: [_reader_ok()],
+            AgentRole.WRITER: [
+                WriterOutput(
+                    symbols=[
+                        _symbol("somar"),
+                        _symbol("processar_pagamento", "Funcao que nao existe no arquivo."),
+                    ]
+                )
+            ],
+        }
+    )
+
+    result = await _run(router, PlanTier.FREE)
+    nomes = {s.name for s in result.documentation.symbols}
+
+    assert "somar" in nomes
+    assert "processar_pagamento" not in nomes, "simbolo inexistente nao pode ser documentado"
+    assert any(
+        "processar_pagamento" in aviso and "descartado" in aviso.lower()
+        for aviso in result.warnings
+    ), f"o descarte precisa ficar visivel ao usuario; avisos: {result.warnings}"
+
+
+async def test_class_qualified_method_is_accepted():
+    """O modelo as vezes devolve `Classe.metodo`; o parser guarda so `metodo`."""
+    fonte = "class Carrinho:\n    def adicionar(self, item):\n        return item\n"
+
+    router = ScriptedRouter(
+        {
+            AgentRole.READER: [_reader_ok()],
+            AgentRole.WRITER: [WriterOutput(symbols=[_symbol("Carrinho.adicionar")])],
+        }
+    )
+
+    pipeline = DocumentationPipeline(
+        router, get_plan(PlanTier.FREE), PipelineOptions(generate_summary=False)
+    )
+    result = await pipeline.run(path="c.py", source=fonte, language=detect_language("c.py"))
+
+    assert len(result.documentation.symbols) == 1, "nao pode ser confundido com alucinacao"
+    assert result.documentation.symbols[0].line_start == 2
+
+
+async def test_nothing_is_discarded_without_parser_ground_truth():
+    """Arquivo cuja gramatica falhou nao tem base de comparacao.
+
+    Descartar tudo aqui deixaria o usuario sem documentacao nenhuma; o certo e
+    aceitar e avisar que nao houve verificacao.
+    """
+    router = ScriptedRouter(
+        {
+            AgentRole.READER: [_reader_ok()],
+            AgentRole.WRITER: [WriterOutput(symbols=[_symbol("qualquer_coisa")])],
+        }
+    )
+
+    pipeline = DocumentationPipeline(
+        router, get_plan(PlanTier.FREE), PipelineOptions(generate_summary=False)
+    )
+    # Constants only: the parser recognises no symbols.
+    fonte = "\n".join(f"CONST_{i} = {i}" for i in range(50))
+    result = await pipeline.run(
+        path="consts.py", source=fonte, language=detect_language("consts.py")
+    )
+
+    assert len(result.documentation.symbols) == 1

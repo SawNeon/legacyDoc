@@ -1,0 +1,98 @@
+name: legacydoc
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: legacydoc
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}
+      POSTGRES_DB: legacydoc
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U legacydoc -d legacydoc"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    # Sem `ports:` de proposito. O banco so precisa ser alcancavel pela rede
+    # interna do compose; expor 5432 no host e como o Postgres acaba na
+    # internet. Para inspecionar localmente, use
+    # `docker compose exec postgres psql -U legacydoc`.
+
+  migrate:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+    # `migrate` roda antes de existir schema, entao pula a verificacao do
+    # entrypoint e apenas espera a conexao ficar de pe.
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - "python -m legacydoc_cli.db wait --timeout 90 && alembic upgrade head"
+    env_file: [../.env]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://legacydoc:${POSTGRES_PASSWORD}@postgres:5432/legacydoc
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+    command:
+      - uvicorn
+      - legacydoc_api.main:get_app
+      - --factory
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --workers
+      - "2"
+    env_file: [../.env]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://legacydoc:${POSTGRES_PASSWORD}@postgres:5432/legacydoc
+    ports:
+      # Apenas no loopback: o nginx do host faz o TLS e o proxy reverso.
+      #
+      # Porta 8001 por padrao, NAO 8000: a v1 ocupa a 8000 na VPS e as duas
+      # precisam conviver durante a transicao. Ajuste com API_PORT no .env.
+      - "127.0.0.1:${API_PORT:-8001}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health').status==200 else 1)\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  worker:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+    command: ["python", "-m", "legacydoc_worker"]
+    env_file: [../.env]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://legacydoc:${POSTGRES_PASSWORD}@postgres:5432/legacydoc
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    # Escala horizontal: `docker compose up -d --scale worker=4`.
+    # SKIP LOCKED garante que duas replicas nunca peguem o mesmo job.
+    deploy:
+      replicas: 2
+    volumes:
+      - worker_tmp:/var/legacydoc/tmp
+
+volumes:
+  postgres_data:
+  worker_tmp:
