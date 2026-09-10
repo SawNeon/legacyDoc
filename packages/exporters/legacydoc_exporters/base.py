@@ -1,10 +1,10 @@
-"""Contrato e fabrica de exportadores.
+"""Exporter contract and factory.
 
-O padrao Factory + ABC veio da v1 praticamente intacto: era a melhor parte
-daquele codigo, extensivel de verdade. O que mudou e a entrada, que agora e o
-modelo tipado `FileDocumentation` em vez de um dict solto, e a saida, que sao
-bytes em vez de um arquivo escrito em disco - assim o mesmo exportador serve
-para download HTTP, para anexo de webhook e para a extensao do VS Code.
+The factory and abstract base carried over from v1 almost untouched: it was the
+best part of that code and genuinely extensible. What changed is the input,
+now a typed `FileDocumentation` instead of a loose dict, and the output, now
+bytes instead of a file on disk, so one exporter serves HTTP downloads, webhook
+attachments and the VS Code extension alike.
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ class ExportResult:
 
 
 class DocumentExporter(ABC):
-    """Um formato de saida."""
+    """One output format."""
 
     format_name: str
     media_type: str
@@ -32,7 +32,7 @@ class DocumentExporter(ABC):
 
     @abstractmethod
     def render(self, documentation: FileDocumentation, *, include_findings: bool) -> bytes:
-        """Serializa a documentacao. Nao toca em disco."""
+        """Serialize the documentation. Never touches disk."""
 
     def export(
         self,
@@ -80,11 +80,11 @@ class ExporterFactory:
 
 
 def safe_stem(path: str) -> str:
-    """Nome de arquivo seguro, preservando a hierarquia do caminho.
+    """Safe filename that preserves the path hierarchy.
 
-    A v1 usava so o basename, entao dois `main.cpp` de repositorios diferentes
-    se sobrescreviam no disco compartilhado. Aqui `src/net/main.cpp` vira
-    `src_net_main`, que nao colide.
+    v1 used the basename alone, so two files with the same name from different
+    repositories overwrote each other on shared disk. Here the full path is
+    flattened, which does not collide.
     """
     import re
 
@@ -92,4 +92,4 @@ def safe_stem(path: str) -> str:
     stem = normalized.rsplit(".", 1)[0] if "." in normalized.rsplit("/", 1)[-1] else normalized
     cleaned = re.sub(r"[^A-Za-z0-9._-]+", "_", stem).strip("._-")
 
-    return cleaned[:120] or "documentacao"
+    return cleaned[:120] or "documentation"

@@ -1,11 +1,9 @@
-"""Dependencias do FastAPI: autenticacao, plano e cotas.
+"""FastAPI dependencies: authentication, plan and quotas.
 
-Aceita duas credenciais no mesmo header `Authorization: Bearer <valor>`:
-
-- JWT de sessao, para o front web (expira em horas).
-- Chave de API `ldk_...`, para a extensao do VS Code e CI (nao expira; e
-  revogavel). Sem isso o desenvolvedor teria que refazer login no editor todo
-  dia.
+Two credential kinds share the `Authorization: Bearer` header. A session JWT
+serves the web front and expires within hours; a revocable API key serves the
+VS Code extension and CI, where a daily re-login inside the editor would be
+unusable.
 """
 
 from __future__ import annotations
@@ -41,7 +39,7 @@ _bearer = HTTPBearer(auto_error=False)
 
 @dataclass
 class Principal:
-    """Quem esta chamando, e com qual plano."""
+    """Who is calling, and under which plan."""
 
     user: User
     plan: PlanLimits
@@ -106,7 +104,7 @@ async def _user_from_jwt(token: str, session: AsyncSession, settings: Settings) 
 
 
 async def _user_from_api_key(token: str, session: AsyncSession) -> User:
-    """Busca pelo prefixo indexado e confirma com comparacao em tempo constante."""
+    """Look up by indexed prefix, then confirm in constant time."""
     rows = (
         await session.execute(
             select(ApiKey).where(
@@ -154,7 +152,7 @@ def _current_month_start() -> datetime:
 
 
 async def spend_this_month(session: AsyncSession, user_id: uuid.UUID) -> float:
-    """Quanto este usuario ja custou em LLM no mes corrente."""
+    """How much this user has cost in LLM spend during the current month."""
     result = await session.execute(
         select(func.coalesce(func.sum(UsageRecord.cost_usd), 0.0)).where(
             UsageRecord.user_id == user_id,
@@ -165,7 +163,7 @@ async def spend_this_month(session: AsyncSession, user_id: uuid.UUID) -> float:
 
 
 async def global_spend_this_month(session: AsyncSession) -> float:
-    """Gasto do sistema inteiro no mes corrente."""
+    """System-wide spend for the current month."""
     result = await session.execute(
         select(func.coalesce(func.sum(UsageRecord.cost_usd), 0.0)).where(
             UsageRecord.created_at >= _current_month_start()
@@ -179,17 +177,15 @@ async def enforce_cost_budget(
     session: AsyncSession,
     settings: Settings,
 ) -> None:
-    """Bloqueia por gasto real, nao por numero de jobs.
+    """Block on real spend rather than job count.
 
-    Sao dois tetos com finalidades distintas:
+    The per-user ceiling stops one account from consuming the budget; the global
+    ceiling is the last line of defense for the card, since many accounts each
+    within their own limit can still add up beyond what the operator can pay.
 
-    - Por usuario: impede que uma conta sozinha consuma o orcamento.
-    - Global: ultima linha de defesa do cartao. Cem contas dentro do proprio
-      limit ainda podem somar mais do que da para pagar.
-
-    A verificacao e feita ANTES de enfileirar. Nao interrompe job em andamento,
-    entao o gasto pode passar um pouco do teto - o custo de um job ja aceito. O
-    teto e um freio, nao uma cerca exata.
+    Checked before enqueueing and never interrupting a running job, so spend can
+    overshoot slightly by the cost of a job already accepted. It is a brake,
+    not an exact fence.
     """
     global_spend = await global_spend_this_month(session)
 
@@ -220,10 +216,10 @@ async def enforce_cost_budget(
 
 
 async def enforce_job_quota(principal: Principal, session: AsyncSession) -> None:
-    """Bloqueia antes de enfileirar.
+    """Block before enqueueing.
 
-    Sao dois limites diferentes: cota mensal controla custo total, e
-    concorrencia impede que um unico usuario ocupe todos os workers.
+    The monthly quota caps total cost; the concurrency limit stops one user
+    from occupying every worker.
     """
     used = await count_jobs_this_month(session, principal.id)
 
@@ -249,9 +245,10 @@ async def get_owned_project(
     principal: Principal,
     session: AsyncSession,
 ) -> Project:
-    """Carrega um projeto garantindo que pertence a quem chamou.
+    """Load a project, ensuring it belongs to the caller.
 
-    404 e nao 403 de proposito: responder 403 revelaria que o id existe.
+    Returns 404 rather than 403 on purpose: a 403 would reveal that the id
+    exists.
     """
     project = await session.get(Project, project_id)
 

@@ -1,11 +1,9 @@
-"""Jobs: enfileirar, acompanhar e cancelar.
+"""Jobs: enqueue, track and cancel.
 
-A diferenca central em relacao a v1: `POST /v1/jobs` responde **202 em
-milissegundos** com um id, e o processamento acontece num worker separado. A v1
-executava clone + N chamadas de LLM dentro de um handler `async def`, o que
-bloqueava o event loop inteiro - uma requisicao congelava todos os outros
-usuarios, inclusive o login - e estourava o `proxy_read_timeout` de 60s do
-nginx em qualquer repositorio grande.
+Central difference from v1: the create endpoint answers 202 in milliseconds
+with an id and processing happens in a separate worker. v1 ran the clone and
+every LLM call inside an async handler, which blocked the whole event loop and
+exceeded the nginx read timeout on any large repository.
 """
 
 from __future__ import annotations
@@ -56,9 +54,9 @@ async def create_job(
     session: AsyncSession = Depends(get_db),
     settings: Settings = Depends(get_app_settings),
 ) -> JobResponse:
-    """Enfileira um job e devolve 202 imediatamente.
+    """Enqueue a job and return 202 immediately.
 
-    O cliente acompanha com `GET /v1/jobs/{id}` ate `status` ficar terminal.
+    Clients poll `GET /v1/jobs/{id}` until the status becomes terminal.
     """
     await enforce_cost_budget(principal, session, settings)
     await enforce_job_quota(principal, session)
@@ -127,15 +125,14 @@ async def create_upload_job(
     session: AsyncSession = Depends(get_db),
     settings: Settings = Depends(get_app_settings),
 ) -> JobResponse:
-    """Enfileira a documentacao de um .zip enviado.
+    """Enqueue documentation for an uploaded archive.
 
-    Terceira entrada, ao lado de repositorio e trecho: cobre quem nao tem o
-    codigo no GitHub, que e o caso comum de sistema legado.
+    The third entry point alongside repository and snippet, covering code that
+    is not on GitHub, which is the common case for legacy systems.
 
-    O arquivo e bytes_written em disco e o job guarda apenas o caminho. A extracao
-    acontece no worker, com as protecoes de `legacydoc_core.archive` - fazer
-    isso aqui devolveria ao processo HTTP o trabalho pesado que a v2 existe
-    para tirar dele.
+    The upload is written to disk and the job stores only the path. Extraction
+    happens in the worker: doing it here would hand the HTTP process back the
+    heavy work that v2 exists to remove from it.
     """
     await enforce_cost_budget(principal, session, settings)
     await enforce_job_quota(principal, session)
@@ -253,10 +250,10 @@ async def cancel(
     principal: Principal = Depends(get_principal),
     session: AsyncSession = Depends(get_db),
 ) -> JobResponse:
-    """Cancela um job que ainda nao comecou.
+    """Cancel a job that has not started.
 
-    Job em execucao nao e interrompido no meio: o worker so percebe o
-    cancelamento no proximo heartbeat.
+    A running job is not interrupted mid-flight; the worker only observes the
+    cancellation on its next heartbeat.
     """
     job = await _owned_job(job_id, principal, session)
 
@@ -284,7 +281,7 @@ async def _owned_job(job_id: uuid.UUID, principal: Principal, session: AsyncSess
 
 
 async def _document_counts(session: AsyncSession, job_ids: list[uuid.UUID]) -> dict[uuid.UUID, int]:
-    """Conta documentos por job numa unica query, evitando N+1 na listagem."""
+    """Count documents per job in one query, avoiding N+1 on listings."""
     if not job_ids:
         return {}
 

@@ -1,4 +1,4 @@
-"""Schema inicial do Legacy Doc v2.
+"""Initial Legacy Doc v2 schema.
 
 Revision ID: 0001_initial
 Revises:

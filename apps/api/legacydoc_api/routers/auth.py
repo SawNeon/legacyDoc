@@ -158,11 +158,10 @@ async def request_password_reset(
     session: AsyncSession = Depends(get_db),
     settings: Settings = Depends(get_app_settings),
 ) -> dict[str, str]:
-    """Envia o link de redefinicao, se a conta existir.
+    """Send the reset link when the account exists.
 
-    Responde SEMPRE 202 com a mesma mensagem, exista o e-mail ou nao. Dizer
-    "e-mail nao encontrado" transformaria este endpoint num verificador de quem
-    tem conta no sistema.
+    Always answers 202 with the same message whether or not the email is known;
+    saying otherwise would turn this endpoint into an account checker.
     """
     email = normalize_email(payload.email)
     user = (await session.execute(select(User).where(User.email == email))).scalar_one_or_none()
@@ -211,7 +210,7 @@ async def confirm_password_reset(
     session: AsyncSession = Depends(get_db),
     settings: Settings = Depends(get_app_settings),
 ) -> TokenResponse:
-    """Troca a senha usando o token do e-mail e ja devolve sessao autenticada."""
+    """Set a new password from the emailed token and return a session."""
     validate_password_strength(payload.new_password, settings.min_password_length)
 
     reset_token = (
@@ -261,9 +260,9 @@ async def create_api_key(
     principal: Principal = Depends(get_principal),
     session: AsyncSession = Depends(get_db),
 ) -> ApiKeyCreatedResponse:
-    """Cria uma chave de longa duracao para a extensao do VS Code ou CI.
+    """Create a long-lived key for the VS Code extension or CI.
 
-    O valor em claro so existe nesta resposta: o banco guarda apenas o hash.
+    The plaintext exists only in this response; the database stores the hash.
     """
     generated = generate_api_key()
 

@@ -1,7 +1,7 @@
-"""Contratos HTTP.
+"""HTTP contracts.
 
-Estes modelos sao o contrato publico da API: e o que a extensao do VS Code e o
-front consomem. Mudanca incompativel aqui exige nova versao de rota.
+These models are the public API contract consumed by the VS Code extension and
+the web front. A breaking change here requires a new route version.
 """
 
 from __future__ import annotations
@@ -50,7 +50,7 @@ class UserResponse(BaseModel):
     plan: PlanInfo
     jobs_used_this_month: int
     spent_this_month_usd: float
-    """Gasto real com LLM no mes. O front usa para mostrar quanto resta."""
+    """Real LLM spend this month, used by the front to show remaining budget."""
 
 
 class ApiKeyCreateRequest(BaseModel):
@@ -68,7 +68,7 @@ class ApiKeyResponse(BaseModel):
 
 class ApiKeyCreatedResponse(ApiKeyResponse):
     api_key: str
-    """Valor em claro. Exibido apenas nesta resposta e nunca recuperavel depois."""
+    """Plaintext value, shown only in this response and never recoverable."""
 
 
 # --------------------------------------------------------------- projetos
@@ -130,7 +130,7 @@ class ContextItemResponse(BaseModel):
 
 
 class RepositoryJobRequest(BaseModel):
-    """Documenta arquivos de um repositorio remoto."""
+    """Document files from a remote repository."""
 
     job_type: Literal["document_repository"] = "document_repository"
     repo_url: str
@@ -147,7 +147,7 @@ class RepositoryJobRequest(BaseModel):
 
 
 class SnippetJobRequest(BaseModel):
-    """Documenta codigo enviado direto. Caminho usado pela extensao do VS Code."""
+    """Document inline code. Used by the VS Code extension."""
 
     job_type: Literal["document_snippet"] = "document_snippet"
     path: str = Field(description="Caminho do arquivo, usado para detectar a linguagem")

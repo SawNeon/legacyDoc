@@ -1,14 +1,9 @@
-"""Exportador PDF.
+"""PDF exporter.
 
-Corrige tres defeitos do gerador da v1:
-
-1. Lia `func["returns"]` e `doc_data["constants"]`, campos que nunca existiram
-   no schema (que define `return_type` / `return_description`). O tipo de
-   retorno simplesmente nao aparecia no PDF.
-2. Nao tratava texto fora de latin-1: as fontes nucleo do fpdf2 nao codificam
-   CJK nem emoji, e um identificador japones quebrava a geracao inteira.
-3. Nao tinha quebra de linha para identificadores longos, que estouravam a
-   margem em vez de quebrar.
+Fixes three defects in the v1 generator: it read field names that never existed
+in the schema, so the return type never reached the PDF; it did not handle text
+outside latin-1, so a single non-Western identifier broke generation entirely;
+and it had no wrapping for long identifiers, which overflowed the margin.
 """
 
 from __future__ import annotations
@@ -32,11 +27,11 @@ _SEVERITY_COLOR = {
 
 
 def _latin1_safe(text: str) -> str:
-    """Torna o texto imprimivel pelas fontes nucleo do fpdf2.
+    """Make text printable by the fpdf2 core fonts.
 
-    Substitui o que nao couber em latin-1 em vez de estourar. Para suportar
-    CJK de verdade seria preciso embutir uma TTF Unicode (`add_font`), o que
-    adiciona ~10 MB ao pacote; enquanto isso, degradar e melhor que falhar.
+    Replaces anything outside latin-1 rather than raising. Real CJK support
+    would require embedding a Unicode TTF, adding roughly 10 MB to the package;
+    until then degrading beats failing.
     """
     return text.encode("latin-1", errors="replace").decode("latin-1")
 

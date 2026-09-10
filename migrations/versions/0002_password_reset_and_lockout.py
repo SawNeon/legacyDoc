@@ -1,4 +1,4 @@
-"""Bloqueio por tentativas de login e recuperacao de senha.
+"""Login attempt lockout and password recovery.
 
 Revision ID: 0002_reset_lockout
 Revises: 0001_initial

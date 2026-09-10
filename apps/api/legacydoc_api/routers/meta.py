@@ -1,8 +1,8 @@
-"""Metadados publicos: linguagens, planos e healthcheck.
+"""Public metadata: languages, plans and export formats.
 
-A extensao do VS Code consulta /v1/meta/languages no startup para decidir em
-quais arquivos oferecer a acao, em vez de embutir a lista no cliente e
-dessincronizar a cada linguagem nova.
+The VS Code extension queries the language list at startup to decide where to
+offer its action, rather than embedding a copy that drifts every time a new
+language is added.
 """
 
 from __future__ import annotations

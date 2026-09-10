@@ -268,11 +268,11 @@ def _build_symbol(
 
 
 def _declaration_header(source: str) -> str:
-    """Recorta a declaracao de um container, sem o corpo dos metodos.
+    """Take a container declaration without its method bodies.
 
-    Corta no delimitador mais proximo, nunca no primeiro de uma lista de
-    prioridade: em Python, procurar `{` antes de `\\n` encontrava a chave de um
-    dict la dentro do corpo e trazia a classe inteira de volta.
+    Cuts at the nearest delimiter rather than the first of a priority list: in
+    Python, searching for a brace before a newline found one inside the body and
+    pulled the whole class back in.
     """
     candidates = [index for index in (source.find("{"), source.find("\n")) if index > 0]
 

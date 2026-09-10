@@ -1,4 +1,4 @@
-"""Permite `python -m legacydoc_cli` como atalho para o smoke test."""
+"""Allow `python -m legacydoc_cli` as a shortcut to the smoke test."""
 
 from legacydoc_cli.smoke import main
 

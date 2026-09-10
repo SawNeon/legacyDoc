@@ -1,10 +1,9 @@
-"""Documentos gerados e download dos artefatos.
+"""Generated documents and artifact downloads.
 
-Diferenca critica em relacao a v1: aqui nao existe `StaticFiles`. A v1 montava
-`/pdfs`, `/markdowns` e `/data` como diretorios estaticos publicos, com nomes
-deterministicos (`Doc_LegacyDoc_main.pdf`), entao qualquer pessoa na internet
-baixava a documentacao de qualquer cliente adivinhando o nome. Os artefatos
-agora sao gerados sob demanda, a partir do banco, e so para o dono.
+Critical difference from v1: there is no `StaticFiles` here. v1 mounted the
+output directories publicly with deterministic filenames, so anyone could
+download any customer's documentation by guessing a name. Artifacts are now
+rendered on demand from the database, for the owner only.
 """
 
 from __future__ import annotations
@@ -110,7 +109,7 @@ async def export_document(
     session: AsyncSession = Depends(get_db),
     export_format: str = Query(default="markdown", alias="format"),
 ) -> Response:
-    """Gera o artefato sob demanda, autenticado e no escopo do dono."""
+    """Render the artifact on demand, authenticated and scoped to the owner."""
     document = await _owned_document(document_id, principal, session)
     exporter = ExporterFactory.get(export_format)
 

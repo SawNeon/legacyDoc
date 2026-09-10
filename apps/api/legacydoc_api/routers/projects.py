@@ -1,9 +1,8 @@
-"""Projetos e a API de contexto.
+"""Projects and the context API.
 
-Contexto de projeto e o que separa "documentacao generica de LLM" de
-"documentacao que entende o dominio": o cliente registra glossario, decisoes de
-arquitetura e convencoes, e o orquestrador injeta os itens relevantes nos
-prompts de cada arquivo.
+Project context is what separates generic LLM output from documentation that
+understands the domain: clients register glossaries, architecture decisions and
+conventions, and the orchestrator injects the relevant entries per file.
 """
 
 from __future__ import annotations

@@ -1,7 +1,7 @@
-"""Exportador JSON.
+"""JSON exporter.
 
-Formato de maquina: e o que a extensao do VS Code consome para desenhar
-CodeLens e o painel de melhorias, entao o schema precisa ser estavel.
+Machine format consumed by the VS Code extension to render CodeLens and the
+findings panel, so the schema has to stay stable.
 """
 
 from __future__ import annotations

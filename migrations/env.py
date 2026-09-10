@@ -1,7 +1,7 @@
-"""Ambiente do Alembic.
+"""Alembic environment.
 
-A URL vem sempre de DATABASE_URL, nunca do alembic.ini, para nao existir uma
-segunda copia das credenciais no repositorio.
+The URL always comes from DATABASE_URL, never from alembic.ini, so there is no
+second copy of the credentials in the repository.
 """
 
 from __future__ import annotations

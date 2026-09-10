@@ -1,0 +1,131 @@
+[33mcommit 5ec0d895459e27a23d00e5d28176db93aea513ae[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m)[m
+Author: Matheus Tavares <matheusbastost313@gmail.com>
+Date:   Thu Sep 10 16:08:07 2026 -0300
+
+    Legacy Doc v2: backend multi-linguagem com fila e multi-provedor
+    
+    Reescrita do backend como monorepo. A v1 continua intacta em legacyDoc/ e
+    Front/, com bancos separados, para que a transicao seja reversivel.
+    
+    Arquitetura
+    - apps/api: FastAPI que so valida, autoriza e enfileira; responde 202 em ms
+    - apps/worker: processa jobs; clone, LLM e exportacao vivem aqui
+    - apps/cli: smoke test contra API real, diagnostico de banco e migracao da v1
+    - packages/core: config, modelos, fila, seguranca, ingestao, extracao de zip
+    - packages/parsing: tree-sitter, 28+ linguagens, chunking por AST, indice
+    - packages/providers: OpenAI, Anthropic e Gemini atras de um protocolo comum
+    - packages/agents: prompts e orquestracao multi-agente
+    - packages/exporters: markdown, pdf e json
+    
+    Defeitos da v1 corrigidos
+    - POST sincrono bloqueava o event loop: agora a fila vive no Postgres com
+      SELECT ... FOR UPDATE SKIP LOCKED e lease, entao um deploy nao perde job
+    - Artefatos eram servidos por StaticFiles publico com nome previsivel
+    - Nao havia user_id: dados de todos os usuarios eram visiveis a qualquer um
+    - JWT caia num segredo padrao versionado no repositorio
+    - Verifier nunca reescrevia nada; a comparacao de tentativas era sempre falsa
+    - Chunking de 150 linhas partia funcoes e o writer descartava a metade
+    - PDF lia campos inexistentes no schema; tipo de retorno nunca aparecia
+    - Clone sem teto deixou 101 MB orfaos no servidor
+    - Conexoes SQLite nunca eram fechadas
+    
+    Precisao da documentacao
+    - Simbolo ausente do codigo e descartado, usando a AST como verdade de base
+    - Indice de simbolos entre arquivos injeta assinaturas do que o trecho chama
+    - Linhas e complexidade vem do parser, nao do modelo
+    
+    Protecao de custo
+    - Teto de gasto em dolar por usuario e teto global do sistema
+    - Telemetria por chamada de LLM em usage_records
+    
+    Seguranca
+    - Extracao de zip com defesa contra traversal, bomba, symlink e inode
+    - Bloqueio de conta por tentativas de login com backoff
+    - Recuperacao de senha com token de uso unico
+    - Chaves de API para a extensao do VS Code
+    
+    178 testes, lint limpo. Codigo, docstrings e comentarios em ingles; mensagens
+    de erro e prompts dos agentes em portugues por serem visiveis ao usuario e
+    por definirem o idioma da documentacao gerada.
+    
+    Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+
+ .env.example                                       |   84 [32m+[m
+ .gitignore                                         |   24 [32m+[m
+ README.md                                          |  160 [32m++[m
+ alembic.ini                                        |   41 [32m+[m
+ apps/api/legacydoc_api/__init__.py                 |    5 [32m+[m
+ apps/api/legacydoc_api/__main__.py                 |   27 [32m+[m
+ apps/api/legacydoc_api/deps.py                     |  261 [32m++[m
+ apps/api/legacydoc_api/main.py                     |  128 [32m+[m
+ apps/api/legacydoc_api/routers/__init__.py         |    1 [32m+[m
+ apps/api/legacydoc_api/routers/auth.py             |  349 [32m+++[m
+ apps/api/legacydoc_api/routers/documents.py        |  200 [32m++[m
+ apps/api/legacydoc_api/routers/jobs.py             |  315 [32m+++[m
+ apps/api/legacydoc_api/routers/meta.py             |   52 [32m+[m
+ apps/api/legacydoc_api/routers/projects.py         |  236 [32m++[m
+ apps/api/legacydoc_api/schemas.py                  |  251 [32m++[m
+ apps/cli/legacydoc_cli/__init__.py                 |    1 [32m+[m
+ apps/cli/legacydoc_cli/__main__.py                 |    6 [32m+[m
+ apps/cli/legacydoc_cli/console.py                  |   40 [32m+[m
+ apps/cli/legacydoc_cli/db.py                       |  302 [32m+++[m
+ apps/cli/legacydoc_cli/migrate_v1.py               |  292 [32m+++[m
+ apps/cli/legacydoc_cli/smoke.py                    |  381 [32m+++[m
+ apps/worker/legacydoc_worker/__init__.py           |    6 [32m+[m
+ apps/worker/legacydoc_worker/__main__.py           |   25 [32m+[m
+ apps/worker/legacydoc_worker/processor.py          |  438 [32m++++[m
+ apps/worker/legacydoc_worker/runner.py             |  205 [32m++[m
+ docs/api-contract.md                               |  404 [32m+++[m
+ docs/deploy.md                                     |  178 [32m++[m
+ docs/migracao-v1.md                                |  145 [32m++[m
+ docs/openapi.json                                  | 2681 [32m++++++++++++++++++++[m
+ infra/Dockerfile                                   |   39 [32m+[m
+ infra/docker-compose.yml                           |   98 [32m+[m
+ infra/entrypoint.sh                                |   23 [32m+[m
+ infra/nginx-legacydoc.conf                         |  118 [32m+[m
+ migrations/env.py                                  |   70 [32m+[m
+ migrations/script.py.mako                          |   26 [32m+[m
+ migrations/versions/0001_initial_schema.py         |  202 [32m++[m
+ .../versions/0002_password_reset_and_lockout.py    |   61 [32m+[m
+ packages/agents/legacydoc_agents/__init__.py       |   23 [32m+[m
+ .../agents/legacydoc_agents/context_selector.py    |  157 [32m++[m
+ packages/agents/legacydoc_agents/pipeline.py       |  536 [32m++++[m
+ packages/agents/legacydoc_agents/prompts.py        |  215 [32m++[m
+ packages/core/legacydoc_core/__init__.py           |    3 [32m+[m
+ packages/core/legacydoc_core/archive.py            |  218 [32m++[m
+ packages/core/legacydoc_core/db.py                 |   88 [32m+[m
+ packages/core/legacydoc_core/domain.py             |  100 [32m+[m
+ packages/core/legacydoc_core/email.py              |   89 [32m+[m
+ packages/core/legacydoc_core/errors.py             |   74 [32m+[m
+ packages/core/legacydoc_core/models.py             |  378 [32m+++[m
+ packages/core/legacydoc_core/plans.py              |  136 [32m+[m
+ packages/core/legacydoc_core/queue.py              |  312 [32m+++[m
+ packages/core/legacydoc_core/repository.py         |  258 [32m++[m
+ packages/core/legacydoc_core/security.py           |  215 [32m++[m
+ packages/core/legacydoc_core/settings.py           |  141 [32m+[m
+ packages/exporters/legacydoc_exporters/__init__.py |   17 [32m+[m
+ packages/exporters/legacydoc_exporters/base.py     |   95 [32m+[m
+ .../exporters/legacydoc_exporters/json_exporter.py |   30 [32m+[m
+ .../legacydoc_exporters/markdown_exporter.py       |  157 [32m++[m
+ .../exporters/legacydoc_exporters/pdf_exporter.py  |  266 [32m++[m
+ packages/parsing/legacydoc_parsing/__init__.py     |   35 [32m+[m
+ packages/parsing/legacydoc_parsing/chunking.py     |  179 [32m++[m
+ packages/parsing/legacydoc_parsing/languages.py    |  191 [32m++[m
+ packages/parsing/legacydoc_parsing/symbol_index.py |  212 [32m++[m
+ packages/parsing/legacydoc_parsing/symbols.py      |  373 [32m+++[m
+ packages/providers/legacydoc_providers/__init__.py |   30 [32m+[m
+ .../legacydoc_providers/anthropic_provider.py      |  137 [32m+[m
+ packages/providers/legacydoc_providers/base.py     |  157 [32m++[m
+ packages/providers/legacydoc_providers/catalog.py  |  142 [32m++[m
+ .../legacydoc_providers/gemini_provider.py         |   99 [32m+[m
+ .../legacydoc_providers/openai_provider.py         |  125 [32m+[m
+ packages/providers/legacydoc_providers/router.py   |  325 [32m+++[m
+ pyproject.toml                                     |   91 [32m+[m
+ tests/conftest.py                                  |  126 [32m+[m
+ tests/test_api.py                                  |  870 [32m+++++++[m
+ tests/test_archive.py                              |  245 [32m++[m
+ tests/test_legacy_languages.py                     |  238 [32m++[m
+ tests/test_migrate_v1.py                           |  165 [32m++[m
+ tests/test_parsing.py                              |  162 [32m++[m
+ tests/test_pipeline.py                             |  390 [32m+++[m
+ tests/test_providers.py           
