@@ -25,3 +25,7 @@ node_modules/
 /legacyDoc/
 /Front/
 /DEPLOY.md
+
+# Sobras de comando mal digitado no shell (ex.: `git show --stat` sem o `s`).
+how *
+how-*
