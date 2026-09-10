@@ -1,0 +1,112 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  # A newer push on the same branch cancels the previous run.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # The suite never reaches a real provider, but Settings requires these.
+  DATABASE_URL: "sqlite+aiosqlite:///:memory:"
+  JWT_SECRET_KEY: ci-secret-key-with-more-than-32-characters
+  ALLOWED_ORIGINS: "http://localhost:5173"
+  ENVIRONMENT: test
+
+jobs:
+  backend:
+    name: Backend (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # 3.12 is what the Docker image runs; 3.13 catches breakage early.
+        python-version: ["3.12", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install
+        run: pip install -e ".[dev]"
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Format
+        run: ruff format --check packages apps tests
+
+      - name: Tests
+        run: pytest -q
+
+      - name: Migrations render valid Postgres SQL
+        # Catches a broken revision without needing a live database.
+        env:
+          DATABASE_URL: "postgresql+asyncpg://ci:ci@localhost:5432/ci"
+        run: alembic upgrade head --sql > /dev/null
+
+      - name: OpenAPI contract is generatable
+        # The VS Code extension is built against this file; a schema that
+        # cannot be produced breaks the client team without breaking a test.
+        run: |
+          python - <<'PY'
+          from legacydoc_api.main import create_app
+
+          spec = create_app().openapi()
+          assert spec["paths"], "no routes in the OpenAPI document"
+          print(f"{len(spec['paths'])} routes")
+          PY
+
+  postgres:
+    name: Queue against real Postgres
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: legacydoc
+          POSTGRES_PASSWORD: legacydoc
+          POSTGRES_DB: legacydoc
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+        ports:
+          - 5432:5432
+
+    env:
+      DATABASE_URL: "postgresql+asyncpg://legacydoc:legacydoc@localhost:5432/legacydoc"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        run: pip install -e ".[dev]"
+
+      - name: Apply migrations
+        run: alembic upgrade head
+
+      - name: Database check
+        run: python -m legacydoc_cli.db check
+
+      - name: Queue concurrency
+        # SKIP LOCKED only exists on Postgres, so the mutual-exclusion
+        # guarantee the whole worker fleet depends on is unverifiable in the
+        # SQLite suite. This job is the only place it is actually proven.
+        run: pytest tests/test_queue_postgres.py -q
