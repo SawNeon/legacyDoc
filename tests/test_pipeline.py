@@ -1,9 +1,8 @@
-"""Testes do orquestrador e da selecao de contexto.
+"""Orchestrator and context selection tests.
 
-Cobrem o defeito silencioso da v1: `MAX_REVIEW_ATTEMPTS=1` com o Writer ja
-saindo em `attempts=1` fazia `attempts < MAX` ser sempre falso. O Verifier
-rodava no modelo mais caro do pipeline e o resultado era descartado - nenhuma
-reescrita jamais acontecia.
+Covers v1's silent defect: the retry comparison was always false, so the
+verifier ran on the most expensive model in the pipeline and its result was
+discarded. No rewrite ever happened.
 """
 
 from __future__ import annotations
@@ -49,7 +48,7 @@ def _symbol(name: str, description: str = "Descricao original.") -> SymbolDoc:
 
 
 class ScriptedRouter:
-    """Roteador falso: devolve respostas programadas por papel."""
+    """Fake router returning scripted responses per role."""
 
     def __init__(self, responses: dict[AgentRole, list]) -> None:
         self._responses = {role: list(items) for role, items in responses.items()}
@@ -114,7 +113,9 @@ async def test_free_plan_documents_without_findings_or_verifier():
     assert {s.name for s in result.documentation.symbols} == {"somar", "dividir"}
     assert result.documentation.findings == []
     assert router.count(AgentRole.IMPROVER) == 0
-    assert router.count(AgentRole.VERIFIER) == 0, "plano Free nao paga pelo modelo caro"
+    assert router.count(AgentRole.VERIFIER) == 0, (
+        "the Free plan does not pay for the expensive model"
+    )
 
 
 async def test_pro_plan_runs_improver_and_verifier():
@@ -148,7 +149,7 @@ async def test_pro_plan_runs_improver_and_verifier():
 
 
 async def test_rejected_symbols_are_actually_rewritten():
-    """O bug da v1: o Verifier reprovava e nada era reescrito."""
+    """The v1 bug: the verifier rejected and nothing was rewritten."""
     router = ScriptedRouter(
         {
             AgentRole.READER: [_reader_ok()],
@@ -200,11 +201,11 @@ async def test_review_stops_after_max_rounds():
 
     assert result.verifier_approved is False
     assert any("sobreviveram" in warning for warning in result.warnings)
-    assert router.count(AgentRole.VERIFIER) == 2, "nao pode entrar em loop infinito"
+    assert router.count(AgentRole.VERIFIER) == 2, "must not loop forever"
 
 
 async def test_parser_data_overrides_model_guesses():
-    """Linhas e complexidade vem da AST, que e verificavel e nao custa token."""
+    """Lines and complexity come from the AST: verifiable and free."""
     router = ScriptedRouter(
         {
             AgentRole.READER: [_reader_ok()],
@@ -279,7 +280,7 @@ def test_glob_targets_the_right_files():
         [auth, billing], file_path="src/auth/login.py", code_sample="def x(): pass"
     )
 
-    assert [item.id for item in chosen] == ["a"], "glob que nao casa e um 'nao' explicito"
+    assert [item.id for item in chosen] == ["a"], "a non-matching glob is an explicit no"
 
 
 def test_lexical_overlap_ranks_relevant_context_first():
@@ -315,10 +316,10 @@ def test_render_context_labels_each_item_by_kind():
 
 
 async def test_invented_symbol_is_discarded():
-    """O parser sabe quais simbolos existem; alucinacao nao pode ser persistida.
+    """The parser knows which symbols exist; hallucination must not persist.
 
-    Sem este filtro o modelo inventava uma funcao e ela virava documentacao
-    real no banco, com line_start=0.
+    Without this filter an invented function became real documentation in the
+    database with line_start=0.
     """
     router = ScriptedRouter(
         {
@@ -338,7 +339,9 @@ async def test_invented_symbol_is_discarded():
     nomes = {s.name for s in result.documentation.symbols}
 
     assert "somar" in nomes
-    assert "processar_pagamento" not in nomes, "simbolo inexistente nao pode ser documentado"
+    assert "processar_pagamento" not in nomes, (
+        "a symbol absent from the code must not be documented"
+    )
     assert any(
         "processar_pagamento" in aviso and "descartado" in aviso.lower()
         for aviso in result.warnings
@@ -346,7 +349,7 @@ async def test_invented_symbol_is_discarded():
 
 
 async def test_class_qualified_method_is_accepted():
-    """O modelo as vezes devolve `Classe.metodo`; o parser guarda so `metodo`."""
+    """The model sometimes returns Class.method; the parser stores method."""
     fonte = "class Carrinho:\n    def adicionar(self, item):\n        return item\n"
 
     router = ScriptedRouter(
@@ -361,15 +364,15 @@ async def test_class_qualified_method_is_accepted():
     )
     result = await pipeline.run(path="c.py", source=fonte, language=detect_language("c.py"))
 
-    assert len(result.documentation.symbols) == 1, "nao pode ser confundido com alucinacao"
+    assert len(result.documentation.symbols) == 1, "must not be mistaken for hallucination"
     assert result.documentation.symbols[0].line_start == 2
 
 
 async def test_nothing_is_discarded_without_parser_ground_truth():
-    """Arquivo cuja gramatica falhou nao tem base de comparacao.
+    """A file whose grammar failed has no ground truth to compare against.
 
-    Descartar tudo aqui deixaria o usuario sem documentacao nenhuma; o certo e
-    aceitar e avisar que nao houve verificacao.
+    Discarding everything would leave the user with no documentation at all;
+    the right move is to accept and warn that nothing was verified.
     """
     router = ScriptedRouter(
         {

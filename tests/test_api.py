@@ -111,7 +111,7 @@ async def test_garbage_token_is_rejected(client: AsyncClient):
 
 
 async def test_api_key_authenticates_and_is_shown_only_once(client: AsyncClient):
-    """Caminho da extensao do VS Code: credencial que nao expira em 24h."""
+    """The VS Code extension path: a credential that does not expire daily."""
     headers, _ = await _register(client)
 
     created = await client.post("/v1/auth/api-keys", json={"name": "vscode"}, headers=headers)
@@ -125,7 +125,7 @@ async def test_api_key_authenticates_and_is_shown_only_once(client: AsyncClient)
 
     listed = await client.get("/v1/auth/api-keys", headers=headers)
     assert listed.status_code == 200
-    assert "api_key" not in listed.json()[0], "o valor em claro nunca pode ser recuperavel"
+    assert "api_key" not in listed.json()[0], "the plaintext must never be recoverable"
 
 
 async def test_revoked_api_key_stops_working(client: AsyncClient):
@@ -158,7 +158,7 @@ async def test_user_cannot_revoke_another_users_key(client: AsyncClient):
 
 
 async def test_project_is_scoped_to_owner(client: AsyncClient):
-    """O vazamento central da v1: dados de todos visiveis para qualquer logado."""
+    """v1's central leak: every user's data visible to any signed-in account."""
     owner_headers, _ = await _register(client)
     other_headers, _ = await _register(client)
 
@@ -342,7 +342,7 @@ async def test_paid_plan_gets_higher_queue_priority(client: AsyncClient, session
     )
 
     job = (await session.execute(select(Job))).scalars().first()
-    assert job.priority == 50, "plano Pro precisa entrar na frente do Free (100)"
+    assert job.priority == 50, "the Pro plan must be served before Free"
 
 
 async def test_job_is_not_visible_to_another_user(client: AsyncClient):
@@ -422,7 +422,7 @@ async def _seed_document(session, client, headers) -> tuple[str, str]:
 
 
 async def test_document_export_is_authenticated(client: AsyncClient, session):
-    """A v1 servia PDFs em /pdfs sem auth e com nome previsivel."""
+    """v1 served PDFs from a public path with predictable names."""
     headers, _ = await _register(client)
     _, document_id = await _seed_document(session, client, headers)
 
@@ -538,7 +538,7 @@ async def test_upload_requires_authentication(client: AsyncClient):
 
 
 async def test_upload_rejects_non_zip_content(client: AsyncClient):
-    """O content-type vem do cliente; quem manda sao os bytes."""
+    """The content type comes from the client; the bytes decide."""
     headers, _ = await _register(client)
 
     response = await client.post(
@@ -592,7 +592,7 @@ async def test_upload_respects_concurrency_limit(client: AsyncClient):
         files={"file": ("b.zip", conteudo, "application/zip")},
     )
 
-    assert segundo.status_code == 402, "plano Free permite 1 job simultaneo"
+    assert segundo.status_code == 402, "the Free plan allows one concurrent job"
 
 
 async def test_upload_on_free_plan_disables_findings(client: AsyncClient, session):
@@ -609,7 +609,7 @@ async def test_upload_on_free_plan_disables_findings(client: AsyncClient, sessio
 
 
 async def _record_spend(session, user_id, valor: float) -> None:
-    """Simula consumo de LLM ja registrado no mes corrente."""
+    """Simulate LLM spend already recorded in the current month."""
     from legacydoc_core.models import UsageRecord
 
     session.add(
@@ -641,7 +641,7 @@ async def test_monthly_spend_is_reported_in_me(client: AsyncClient, session):
 
 
 async def test_user_blocked_when_cost_ceiling_reached(client: AsyncClient, session):
-    """Cota por numero de jobs nao protege: o que sai do bolso e dolar."""
+    """A job-count quota protects nothing: the bill is in dollars."""
     headers, email = await _register(client)
     await _record_spend(session, await _user_id_for(session, email), 0.60)  # acima de US$ 0,50
 
@@ -672,8 +672,8 @@ async def test_job_accepted_below_cost_ceiling(client: AsyncClient, session):
 
 
 async def test_global_budget_blocks_every_user(client: AsyncClient, session, settings):
-    """Ultima linha de defesa do cartao: cem contas dentro do proprio limite
-    ainda podem somar mais do que da para pagar."""
+    """Last line of defense for the card: many accounts within their own
+    limits can still add up beyond what the operator can pay."""
     outro_headers, outro_email = await _register(client)
     await _record_spend(
         session,
@@ -704,7 +704,7 @@ async def test_cost_ceiling_also_applies_to_upload(client: AsyncClient, session)
         files={"file": ("a.zip", _build_zip_bytes({"a.py": b"x = 1\n"}), "application/zip")},
     )
 
-    assert response.status_code == 402, "o upload nao pode ser porta dos fundos do teto"
+    assert response.status_code == 402, "upload must not bypass the cost ceiling"
 
 
 async def _attempt_login(client: AsyncClient, email: str, senha: str):
@@ -712,7 +712,7 @@ async def _attempt_login(client: AsyncClient, email: str, senha: str):
 
 
 async def test_account_locks_after_repeated_failures(client: AsyncClient):
-    """Forca bruta contra a CONTA, que troca de IP a cada tentativa."""
+    """Brute force against the account, rotating IP on every attempt."""
     from legacydoc_core.security import MAX_FAILED_LOGINS
 
     _, email = await _register(client)
@@ -743,7 +743,7 @@ async def test_successful_login_resets_attempt_counter(client: AsyncClient):
 
 
 async def test_lockout_does_not_reveal_email_existence(client: AsyncClient):
-    """Contagem de tentativas nao pode virar enumerador de contas."""
+    """The attempt counter must not become an account enumerator."""
     _, email = await _register(client)
 
     real = await _attempt_login(client, email, "senha-errada-123")
@@ -754,7 +754,7 @@ async def test_lockout_does_not_reveal_email_existence(client: AsyncClient):
 
 
 async def test_full_password_reset_flow(client: AsyncClient, session, caplog):
-    """O que a tela do front prometia e nunca fazia."""
+    """What the front screen promised and never actually did."""
     import logging
     import re
 
@@ -782,7 +782,7 @@ async def test_full_password_reset_flow(client: AsyncClient, session, caplog):
 
 
 async def test_reset_request_for_unknown_email_responds_identically(client: AsyncClient):
-    """Nao pode virar verificador de quem tem conta."""
+    """Must not become a checker for who has an account."""
     _, email = await _register(client)
 
     existente = await client.post("/v1/auth/password-reset/request", json={"email": email})
@@ -813,7 +813,7 @@ async def test_reset_token_is_single_use(client: AsyncClient, caplog):
         json={"token": token, "new_password": "segunda-senha-9"},
     )
 
-    assert segunda.status_code == 401, "token usado nao pode servir de novo"
+    assert segunda.status_code == 401, "a spent token must not work again"
 
 
 async def test_invalid_reset_token_is_rejected(client: AsyncClient):
@@ -845,7 +845,7 @@ async def test_reset_requires_strong_password(client: AsyncClient, caplog):
 
 
 async def test_reset_unlocks_a_locked_account(client: AsyncClient, caplog):
-    """Quem provou acesso ao e-mail nao pode ficar preso pelo bloqueio."""
+    """Proving email access must clear the lock the attack itself caused."""
     import logging
     import re
 

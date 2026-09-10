@@ -1,7 +1,7 @@
-"""Integracao: da fila ate os documentos gravados.
+"""Integration: from the queue to stored documents.
 
-Exercita o caminho completo do worker sem gastar token e sem rede: o roteador
-de provedores e substituido por um duble que devolve respostas programadas.
+Exercises the full worker path without spending tokens or touching the network:
+the provider router is replaced by a double returning scripted responses.
 """
 
 from __future__ import annotations
@@ -37,10 +37,10 @@ SOURCE = (
 
 
 class FakeRouter:
-    """Substitui o ProviderRouter, respondendo por papel.
+    """Stand-in for ProviderRouter, answering per role.
 
-    Honra o `usage_sink` como o roteador real: sem isso o teste de faturamento
-    passaria a medir o duble em vez da fiacao do processor.
+    Honours `usage_sink` like the real router: without it the billing test
+    would measure the double instead of the processor wiring.
     """
 
     def __init__(self, usage_sink=None) -> None:
@@ -134,7 +134,7 @@ class FakeRouter:
 
 @pytest.fixture
 def fake_router(monkeypatch) -> FakeRouter:
-    """Captura o usage_sink que o processor passa, para verificar a fiacao."""
+    """Capture the usage_sink the processor passes, to verify the wiring."""
     holder: dict[str, FakeRouter] = {}
 
     def _from_settings(cls, settings, **kwargs):
@@ -194,7 +194,7 @@ async def test_full_job_produces_document_and_findings(session, pro_user, settin
     assert document.path == "src/carrinho.py"
     assert document.language == "python"
     assert document.summary == "Modulo de carrinho de compras."
-    assert document.user_id == pro_user.id, "todo documento precisa ter dono"
+    assert document.user_id == pro_user.id, "every document needs an owner"
     assert {symbol["name"] for symbol in document.symbols} == {"adicionar", "calcular_total"}
 
     # Lines and complexity come from the AST, not the model.
@@ -222,7 +222,7 @@ async def test_usage_is_recorded_for_billing(session, pro_user, settings, fake_r
 
     records = (await session.execute(select(UsageRecord))).scalars().all()
 
-    assert records, "toda chamada de LLM precisa gerar linha de uso"
+    assert records, "every LLM call must record usage"
     assert all(record.job_id == claimed.id for record in records)
     assert all(record.user_id == pro_user.id for record in records)
     # claude-sonnet-5: 2 USD/MTok entrada, 10 de saida.
@@ -230,7 +230,7 @@ async def test_usage_is_recorded_for_billing(session, pro_user, settings, fake_r
 
 
 async def test_free_plan_skips_the_expensive_agents(session, user, settings, fake_router):
-    """Plano Free nao pode pagar Improver nem Verifier."""
+    """The Free plan must not pay for the improver or the verifier."""
     await _queue_snippet_job(session, user)
     claimed = await claim_job(session, worker_id="w1", lease_seconds=300)
     await session.commit()
@@ -252,7 +252,7 @@ async def test_provider_router_is_closed_after_the_job(session, pro_user, settin
 
     await JobProcessor(settings).process(session, claimed, worker_id="w1")
 
-    assert fake_router.closed is True, "conexoes HTTP dos provedores nao podem vazar"
+    assert fake_router.closed is True, "provider HTTP connections must not leak"
 
 
 async def test_unsupported_extension_fails_without_retry(session, pro_user, settings, fake_router):
@@ -274,7 +274,7 @@ async def test_unsupported_extension_fails_without_retry(session, pro_user, sett
 
 
 async def test_document_export_works_end_to_end(session, pro_user, settings, fake_router):
-    """Prova que o resultado gravado gera artefato valido nos tres formatos."""
+    """Prove the stored result renders valid artifacts in all three formats."""
     from legacydoc_core.domain import FileDocumentation
     from legacydoc_exporters import ExporterFactory
 

@@ -1,9 +1,8 @@
-"""Testes da fila.
+"""Queue tests.
 
-Ressalva: SQLite nao implementa `FOR UPDATE SKIP LOCKED`, entao aqui se exercita
-o caminho de reivindicacao otimista. A garantia de exclusao mutua sob
-concorrencia real depende do Postgres e precisa de teste de integracao com
-container.
+Caveat: SQLite does not implement `FOR UPDATE SKIP LOCKED`, so these exercise
+the optimistic claim path. Mutual exclusion under real concurrency depends on
+Postgres and needs an integration test with a container.
 """
 
 from __future__ import annotations
@@ -24,7 +23,7 @@ from legacydoc_core.queue import (
 
 
 def _as_aware(value: datetime) -> datetime:
-    """SQLite descarta o fuso na ida e volta; no Postgres o valor volta aware."""
+    """SQLite drops the timezone on round trip; Postgres returns it aware."""
     return value if value.tzinfo else value.replace(tzinfo=UTC)
 
 
@@ -69,7 +68,7 @@ async def test_job_is_claimed_only_once(session, user):
     await session.commit()
 
     assert first is not None
-    assert second is None, "o mesmo job nao pode ser entregue a dois workers"
+    assert second is None, "the same job must not be handed to two workers"
 
 
 async def test_priority_orders_the_queue(session, user):
@@ -80,7 +79,7 @@ async def test_priority_orders_the_queue(session, user):
     await session.commit()
 
     assert claimed is not None
-    assert claimed.id == high.id, "planos pagos precisam ser atendidos primeiro"
+    assert claimed.id == high.id, "paid plans must be served first"
     assert claimed.id != low.id
 
 
@@ -95,18 +94,18 @@ async def test_heartbeat_renews_lease_and_reports_progress(session, user):
         worker_id="w1",
         lease_seconds=120,
         progress_percent=42,
-        progress_message="documentando",
+        progress_message="documenting",
     )
     await session.commit()
     await session.refresh(claimed)
 
     assert alive is True
     assert claimed.progress_percent == 42
-    assert claimed.progress_message == "documentando"
+    assert claimed.progress_message == "documenting"
 
 
 async def test_heartbeat_from_wrong_worker_is_rejected(session, user):
-    """Impede que um worker que perdeu o lease continue e duplique trabalho."""
+    """Stops a worker that lost its lease from continuing and duplicating work."""
     await _add_job(session, user)
     claimed = await claim_job(session, worker_id="w1", lease_seconds=60)
     await session.commit()
@@ -127,7 +126,7 @@ async def test_fail_requeues_with_backoff_while_attempts_remain(session, user):
         job_id=claimed.id,
         worker_id="w1",
         error_code="provider_error",
-        error_message="provedor fora do ar",
+        error_message="provider unavailable",
     )
     await session.commit()
     await session.refresh(claimed)
@@ -136,7 +135,7 @@ async def test_fail_requeues_with_backoff_while_attempts_remain(session, user):
     assert claimed.status == JobStatus.QUEUED
     assert claimed.locked_by is None
     assert _as_aware(claimed.scheduled_at) > datetime.now(UTC), (
-        "o backoff precisa adiar a proxima tentativa"
+        "backoff must delay the next attempt"
     )
 
 
@@ -150,7 +149,7 @@ async def test_fail_is_final_when_attempts_exhausted(session, user):
         job_id=claimed.id,
         worker_id="w1",
         error_code="provider_error",
-        error_message="falhou de novo",
+        error_message="failed again",
     )
     await session.commit()
     await session.refresh(claimed)
@@ -161,7 +160,7 @@ async def test_fail_is_final_when_attempts_exhausted(session, user):
 
 
 async def test_domain_errors_are_not_retried(session, user):
-    """Repo invalido nao melhora com nova tentativa."""
+    """An invalid repository does not improve on retry."""
     await _add_job(session, user, max_attempts=3)
     claimed = await claim_job(session, worker_id="w1", lease_seconds=60)
     await session.commit()
@@ -171,7 +170,7 @@ async def test_domain_errors_are_not_retried(session, user):
         job_id=claimed.id,
         worker_id="w1",
         error_code="validation_error",
-        error_message="repositorio invalido",
+        error_message="invalid repository",
         retryable=False,
     )
     await session.commit()
@@ -182,7 +181,7 @@ async def test_domain_errors_are_not_retried(session, user):
 
 
 async def test_reaper_requeues_job_whose_worker_died(session, user):
-    """O caso que a v1 nao cobria: deploy no meio de um job perdia a requisicao."""
+    """The case v1 missed: a deploy mid-job lost the request."""
     await _add_job(session, user, max_attempts=3)
     claimed = await claim_job(session, worker_id="w1", lease_seconds=60)
     claimed.lease_expires_at = datetime.now(UTC) - timedelta(seconds=1)
@@ -207,7 +206,7 @@ async def test_reaper_fails_job_that_exhausted_attempts(session, user):
     await session.commit()
     await session.refresh(claimed)
 
-    assert claimed.status == JobStatus.FAILED, "nao pode ficar em loop eterno de reenfileiramento"
+    assert claimed.status == JobStatus.FAILED, "must not requeue forever"
     assert claimed.error_code == "lease_expired"
 
 

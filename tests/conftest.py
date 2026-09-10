@@ -1,9 +1,9 @@
-"""Fixtures da suite.
+"""Suite fixtures.
 
-Os testes rodam em SQLite via aiosqlite para nao exigir container. A ressalva
-importante: SQLite nao tem `FOR UPDATE SKIP LOCKED`, entao o caminho real de
-concorrencia da fila em producao nao e exercido aqui - `test_queue.py` cobre o
-fallback otimista e documenta a diferenca.
+Tests run on SQLite through aiosqlite so no container is required. Important
+caveat: SQLite has no `FOR UPDATE SKIP LOCKED`, so the real production
+concurrency path is not exercised here. `test_queue.py` covers the optimistic
+fallback and documents the difference.
 """
 
 from __future__ import annotations

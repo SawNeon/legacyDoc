@@ -1,8 +1,8 @@
-"""Testes de parsing e chunking.
+"""Parsing and chunking tests.
 
-O foco esta na regressao que motivou a reescrita: a v1 cortava o codigo a cada
-150 linhas fixas, partia funcoes ao meio e o Writer, instruido a ignorar
-definicoes incompletas, descartava a metade em silencio.
+Focused on the regression that motivated the rewrite: v1 cut code every 150
+fixed lines, split functions in half, and the writer silently dropped the
+incomplete remainder.
 """
 
 from __future__ import annotations
@@ -46,7 +46,7 @@ def _parse(path: str, source: str):
 
 
 def test_symbols_are_never_split_across_chunks():
-    """A regressao central da v1."""
+    """v1's central regression."""
     functions = "\n\n".join(
         f"def funcao_{index}(a, b):\n"
         + "\n".join(f"    x_{line} = a + b + {line}" for line in range(40))
@@ -57,7 +57,7 @@ def test_symbols_are_never_split_across_chunks():
     parsed = _parse("grande.py", functions)
     chunks = build_chunks(parsed, max_tokens_per_chunk=800)
 
-    assert len(chunks) > 1, "o arquivo precisa ser grande o bastante para dividir"
+    assert len(chunks) > 1, "the file must be large enough to split"
 
     for chunk in chunks:
         for symbol in chunk.symbols:
@@ -78,14 +78,13 @@ def test_oversized_symbol_becomes_its_own_chunk():
 
     assert len(chunks) == 1
     assert chunks[0].truncated is True
-    assert "TRUNCADO" in chunks[0].source, "o modelo precisa saber que viu um trecho"
+    assert "TRUNCADO" in chunks[0].source, "the model must know it saw a fragment"
 
 
 def test_container_body_is_not_duplicated_in_the_chunk():
-    """Classe e metodos no mesmo chunk nao podem repetir o mesmo codigo.
+    """A class and its methods must not repeat the same code in one chunk.
 
-    Enviar o corpo duas vezes dobraria o custo de token em arquivos orientados
-    a objeto.
+    Sending the body twice would double token cost for object-oriented files.
     """
     source = (
         "class Servico:\n"
@@ -129,7 +128,7 @@ def test_complexity_is_measured_not_guessed():
 
 
 def test_container_has_no_complexity_score():
-    """Somar a complexidade de todos os metodos nao significa nada."""
+    """Summing every method's complexity would mean nothing."""
     parsed = _parse("c.py", "class A:\n    def m(self):\n        if 1:\n            return 2\n")
     classe = next(s for s in parsed.symbols if s.kind == "class")
 
@@ -150,7 +149,7 @@ def test_file_without_recognizable_symbols_falls_back_to_line_chunks():
 
     chunks = build_chunks(_parse("consts.py", source), max_tokens_per_chunk=300)
 
-    assert chunks, "arquivo so de constantes ainda precisa ser processavel"
+    assert chunks, "a constants-only file must still be processable"
     assert all(chunk.truncated for chunk in chunks)
 
 

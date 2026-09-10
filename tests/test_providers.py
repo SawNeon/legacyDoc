@@ -1,7 +1,7 @@
-"""Testes do roteamento multi-provedor.
+"""Multi-provider routing tests.
 
-Provedores falsos: o objetivo e provar a logica de fallback e contabilidade sem
-gastar dinheiro nem depender de rede.
+Fake providers, so fallback logic and accounting are proven without spending
+money or depending on the network.
 """
 
 from __future__ import annotations
@@ -84,7 +84,7 @@ async def test_primary_provider_is_used_when_healthy():
 
 
 async def test_rate_limited_provider_falls_back_to_next():
-    """Ser multi-provedor tem que virar vantagem operacional, nao so opcao de menu."""
+    """Multi-provider has to be an operational advantage, not a menu option."""
     openai = FakeProvider("openai", fails_with=ProviderRateLimitError("429"))
     anthropic = FakeProvider("anthropic")
 
@@ -128,7 +128,7 @@ async def test_error_is_raised_only_after_the_whole_chain_fails():
 
 
 async def test_chain_is_filtered_to_configured_providers():
-    """Politica cita Anthropic, mas so ha chave da OpenAI: nao pode morrer."""
+    """The policy names a vendor with no key configured: it must not die."""
     router = _router(
         {ProviderName.OPENAI: FakeProvider("openai")},
         routes={
@@ -151,7 +151,7 @@ async def test_role_without_available_model_uses_generic_route():
 
     chain = router.resolve_chain(AgentRole.IMPROVER)
 
-    assert chain, "documentacao degradada e melhor que job morto"
+    assert chain, "degraded documentation beats a dead job"
     assert all(choice.provider == ProviderName.OPENAI for choice in chain)
 
 
@@ -185,7 +185,7 @@ async def test_usage_is_recorded_for_success_and_failure():
     await router.complete(AgentRole.WRITER, system="s", user="u", schema=Answer)
 
     assert [record.succeeded for record in records] == [False, True]
-    assert records[1].cost_usd > 0, "chamada bem-sucedida precisa gerar custo"
+    assert records[1].cost_usd > 0, "a successful call must record cost"
 
 
 async def test_aclose_closes_every_provider():
@@ -249,12 +249,12 @@ def test_unknown_model_costs_zero_instead_of_crashing():
 
 
 def test_unverified_prices_are_flagged():
-    """Guarda contra faturar com preco chutado.
+    """Guard against billing with guessed prices.
 
-    Este teste NAO falha hoje: ele documenta quais precos ainda precisam ser
-    conferidos contra a tabela oficial de cada fornecedor.
+    This does not fail today: it documents which prices still need checking
+    against each vendor's official table.
     """
     pendentes = {spec.model_id for spec in unverified_models()}
 
     assert "claude-opus-5" not in pendentes, "os precos da Anthropic vieram de fonte datada"
-    assert pendentes, "confira os precos de OpenAI e Google antes de cobrar de clientes"
+    assert pendentes, "check OpenAI and Google pricing before billing customers"

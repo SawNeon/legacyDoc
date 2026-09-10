@@ -1,14 +1,12 @@
-"""Cobertura real do extrator nas linguagens de codigo legado.
+"""Measured extractor coverage across legacy languages.
 
-Este arquivo existe para nao repetir um erro que eu cometi: afirmar cobertura
-sem medir. O `tree-sitter-language-pack` traz 371 gramaticas, mas carregar a
-gramatica nao significa que o extrator generico ache simbolos nela.
+Loading a grammar does not mean the generic extractor finds symbols in it, so
+coverage is asserted rather than claimed.
 
-Os testes abaixo separam explicitamente:
-
-- FUNCIONA: o extrator encontra funcoes com nome; chunking por AST vale.
-- DEGRADADO: a gramatica carrega mas nao rende simbolos; o arquivo cai no
-  fallback de chunk por linha, com qualidade pior. Documentado, nao escondido.
+The tests separate two outcomes explicitly: languages where the extractor finds
+named functions and AST chunking applies, and languages where the grammar loads
+but yields no symbols, so the file falls back to line chunking at lower quality.
+The second group is documented, not hidden.
 """
 
 from __future__ import annotations
@@ -169,7 +167,7 @@ def test_extracts_symbols_from_legacy_language(language: str):
 
     assert not parsed.parse_failed, f"a gramatica de {language} nao carregou"
     assert parsed.symbols, f"o extrator nao achou nenhum simbolo em {language}"
-    assert all(symbol.name for symbol in parsed.symbols), "todo simbolo precisa ter nome"
+    assert all(symbol.name for symbol in parsed.symbols), "every symbol needs a name"
 
 
 def test_pascal_encontra_funcao_e_procedimento():
@@ -190,7 +188,7 @@ def test_visual_basic_finds_function_and_sub_inside_class():
 
 
 def test_complexity_is_measured_for_legacy_language():
-    """A ramificacao precisa ser contada tambem fora das linguagens modernas."""
+    """Branch counting has to work outside the modern languages too."""
     parsed = _parse(*AMOSTRAS["vb"])
     com_if = next(s for s in parsed.symbols if s.name == "CalcularJuros")
 
@@ -202,10 +200,10 @@ def test_complexity_is_measured_for_legacy_language():
 
 @pytest.mark.parametrize("language", sorted(DEGRADADAS))
 def test_linguagem_degradada_ainda_e_processavel(language: str):
-    """Sem simbolos, mas o arquivo nao pode ser perdido nem estourar.
+    """No symbols, but the file must neither be lost nor raise.
 
-    Se algum dia a gramatica melhorar e este teste comecar a achar simbolos,
-    ele falha de proposito: e o sinal para promover a linguagem para AMOSTRAS.
+    If the grammar ever improves and this starts finding symbols, the test fails
+    on purpose: that is the signal to promote the language to the working set.
     """
     path, source = DEGRADADAS[language]
     parsed = _parse(path, source)
@@ -214,7 +212,7 @@ def test_linguagem_degradada_ainda_e_processavel(language: str):
     assert not parsed.symbols, (
         f"{language} passou a render simbolos - mova para AMOSTRAS e remova daqui"
     )
-    assert chunks, "o arquivo precisa gerar ao menos um chunk mesmo sem simbolos"
+    assert chunks, "the file must still produce at least one chunk without symbols"
     assert all(chunk.truncated for chunk in chunks), (
         "chunk por linha precisa vir marcado, para o Writer saber que a fronteira e arbitraria"
     )

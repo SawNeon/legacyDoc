@@ -214,8 +214,8 @@ class PdfExporter(DocumentExporter):
                     new_y="NEXT",
                 )
 
-        # A v1 lia `func["returns"]`, chave inexistente no schema; o retorno
-        # nunca chegava ao PDF. Os campos corretos sao estes dois.
+        # v1 read a key absent from the schema, so the return never reached the
+        # PDF. These two fields are the correct ones.
         if symbol.return_type or symbol.return_description:
             pdf.set_font("helvetica", "B", 9)
             pdf.cell(0, 5, "Retorno:", new_x="LMARGIN", new_y="NEXT")
