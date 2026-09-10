@@ -24,10 +24,18 @@ class Usage:
     input_tokens: int = 0
     output_tokens: int = 0
 
+    cache_read_tokens: int = 0
+    """Input tokens served from the provider cache, billed at a fraction."""
+
+    cache_write_tokens: int = 0
+    """Input tokens written to the cache, billed at a premium."""
+
     def __add__(self, other: Usage) -> Usage:
         return Usage(
             input_tokens=self.input_tokens + other.input_tokens,
             output_tokens=self.output_tokens + other.output_tokens,
+            cache_read_tokens=self.cache_read_tokens + other.cache_read_tokens,
+            cache_write_tokens=self.cache_write_tokens + other.cache_write_tokens,
         )
 
 
@@ -45,6 +53,21 @@ class StructuredResult(Generic[T]):
     """True when the primary provider failed and the router fell back."""
 
 
+MIN_CACHEABLE_TOKENS = 1024
+"""Below this, providers silently skip the cache.
+
+Marking a shorter prefix is worse than not marking it: a cache write costs
+more than a plain input token, so the request pays a premium for a cache
+that is never created.
+"""
+
+CHARS_PER_TOKEN = 3.6
+
+
+def is_worth_caching(text: str) -> bool:
+    return len(text) / CHARS_PER_TOKEN >= MIN_CACHEABLE_TOKENS
+
+
 @dataclass(frozen=True)
 class CompletionRequest:
     system: str
@@ -52,7 +75,31 @@ class CompletionRequest:
     model: str
     temperature: float = 0.1
     max_output_tokens: int = 4096
+
+    cacheable_prefix: str = ""
+    """Stable content placed before `user` and offered to the provider cache.
+
+    Caching is prefix-based, so this only pays off when the same text leads
+    several requests. The orchestrator uses it for the file source in the
+    audit loop, which is resent unchanged on every review round.
+    """
+
+    cache_key: str = ""
+    """Groups requests sharing a prefix, improving cache routing."""
+
     extra: dict[str, Any] = field(default_factory=dict)
+
+    @property
+    def should_cache_prefix(self) -> bool:
+        return bool(self.cacheable_prefix) and is_worth_caching(self.cacheable_prefix)
+
+    @property
+    def user_content(self) -> str:
+        """Prefix and variable part joined, for providers without block caching."""
+        if not self.cacheable_prefix:
+            return self.user
+
+        return "\n\n".join([self.cacheable_prefix, self.user])
 
 
 @runtime_checkable

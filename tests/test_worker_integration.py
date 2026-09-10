@@ -48,7 +48,7 @@ class FakeRouter:
         self.closed = False
         self._usage_sink = usage_sink
 
-    async def complete(self, role, *, system, user, schema):
+    async def complete(self, role, *, system, user, schema, cacheable_prefix="", cache_key=""):
         self.calls.append(role)
 
         result = StructuredResult(

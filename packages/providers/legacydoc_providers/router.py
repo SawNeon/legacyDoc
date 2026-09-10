@@ -126,6 +126,7 @@ class CallRecord:
     cost_usd: float
     latency_ms: int
     succeeded: bool
+    cache_read_tokens: int = 0
 
 
 UsageSink = Callable[[CallRecord], Awaitable[None]]
@@ -228,6 +229,8 @@ class ProviderRouter:
         system: str,
         user: str,
         schema: type[T],
+        cacheable_prefix: str = "",
+        cache_key: str = "",
     ) -> StructuredResult[T]:
         """Run the role, falling through to the next provider on each failure."""
         chain = self.resolve_chain(role)
@@ -241,6 +244,8 @@ class ProviderRouter:
                 model=choice.model,
                 temperature=choice.temperature,
                 max_output_tokens=choice.max_output_tokens,
+                cacheable_prefix=cacheable_prefix,
+                cache_key=cache_key,
             )
 
             try:
@@ -298,6 +303,7 @@ class ProviderRouter:
                 ),
                 latency_ms=result.latency_ms,
                 succeeded=succeeded,
+                cache_read_tokens=result.usage.cache_read_tokens,
             )
         )
 

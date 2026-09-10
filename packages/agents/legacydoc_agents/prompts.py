@@ -185,6 +185,20 @@ REGRAS:
 - feedback_message em {language_label(context.output_language)}."""
 
 
+def verifier_source_block(code: str, *, file_path: str) -> str:
+    """The half of the audit prompt that never changes between rounds."""
+    return f"""Arquivo: {file_path}
+
+CODIGO ORIGINAL:
+{code}"""
+
+
+def verifier_documentation_block(documentation_json: str) -> str:
+    """The half that changes after every rewrite."""
+    return f"""DOCUMENTACAO GERADA:
+{documentation_json}"""
+
+
 def verifier_user(code: str, documentation_json: str, *, file_path: str) -> str:
     return f"""Arquivo: {file_path}
 

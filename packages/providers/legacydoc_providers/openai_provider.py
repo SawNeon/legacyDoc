@@ -52,9 +52,10 @@ class OpenAIProvider:
                 max_completion_tokens=request.max_output_tokens,
                 messages=[
                     {"role": "system", "content": request.system},
-                    {"role": "user", "content": request.user},
+                    {"role": "user", "content": request.user_content},
                 ],
                 response_format=schema,
+                **_cache_options(request),
             )
             choice = response.choices[0]
             value = choice.message.parsed
@@ -103,8 +104,9 @@ class OpenAIProvider:
             response_format={"type": "json_object"},
             messages=[
                 {"role": "system", "content": f"{request.system}\n\n{json_instruction(schema)}"},
-                {"role": "user", "content": request.user},
+                {"role": "user", "content": request.user_content},
             ],
+            **_cache_options(request),
         )
         raw_text = response.choices[0].message.content or ""
         return parse_model_json(raw_text, schema, provider=_NAME), raw_text, response
@@ -113,13 +115,21 @@ class OpenAIProvider:
         await self._client.close()
 
 
+def _cache_options(request: CompletionRequest) -> dict:
+    """OpenAI caches automatically above its minimum; the key improves routing."""
+    return {"prompt_cache_key": request.cache_key} if request.cache_key else {}
+
+
 def _extract_usage(response: object) -> Usage:
     usage = getattr(response, "usage", None)
 
     if usage is None:
         return Usage()
 
+    details = getattr(usage, "prompt_tokens_details", None)
+
     return Usage(
         input_tokens=getattr(usage, "prompt_tokens", 0) or 0,
         output_tokens=getattr(usage, "completion_tokens", 0) or 0,
+        cache_read_tokens=getattr(details, "cached_tokens", 0) or 0,
     )

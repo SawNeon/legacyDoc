@@ -53,9 +53,13 @@ class ScriptedRouter:
     def __init__(self, responses: dict[AgentRole, list]) -> None:
         self._responses = {role: list(items) for role, items in responses.items()}
         self.calls: list[AgentRole] = []
+        self.cacheable_prefixes: list[str] = []
+        self.cache_keys: list[str] = []
 
-    async def complete(self, role, *, system, user, schema):
+    async def complete(self, role, *, system, user, schema, cacheable_prefix="", cache_key=""):
         self.calls.append(role)
+        self.cacheable_prefixes.append(cacheable_prefix)
+        self.cache_keys.append(cache_key)
         queue = self._responses.get(role)
 
         if not queue:
@@ -391,3 +395,90 @@ async def test_nothing_is_discarded_without_parser_ground_truth():
     )
 
     assert len(result.documentation.symbols) == 1
+
+
+async def test_audit_sends_the_source_as_a_cacheable_prefix():
+    """The file is identical on every review round; the documentation is not.
+
+    Leading with the source lets the provider bill it at cache rates from the
+    second round on, and the verifier runs on the most expensive model.
+    """
+    stubborn = VerifierOutput(
+        approved=False,
+        rejected_symbols=["somar"],
+        audit_notes="still wrong",
+        feedback_message="Not yet.",
+    )
+    router = ScriptedRouter(
+        {
+            AgentRole.READER: [_reader_ok()],
+            AgentRole.WRITER: [WriterOutput(symbols=[_symbol("somar")])],
+            AgentRole.IMPROVER: [ImproverOutput()],
+            AgentRole.VERIFIER: [stubborn],
+        }
+    )
+
+    await _run(
+        router,
+        PlanTier.PRO,
+        options=PipelineOptions(generate_summary=False, max_review_rounds=1),
+    )
+
+    audit_prefixes = [
+        prefix
+        for role, prefix in zip(router.calls, router.cacheable_prefixes, strict=True)
+        if role == AgentRole.VERIFIER
+    ]
+
+    assert len(audit_prefixes) == 2, "the loop must audit twice"
+    assert audit_prefixes[0] == audit_prefixes[1], (
+        "the cached prefix must be byte-identical or the cache never hits"
+    )
+    assert "def somar" in audit_prefixes[0], "the prefix must carry the source"
+
+
+async def test_audit_uses_a_stable_cache_key_per_file():
+    router = ScriptedRouter(
+        {
+            AgentRole.READER: [_reader_ok()],
+            AgentRole.WRITER: [WriterOutput(symbols=[_symbol("somar")])],
+            AgentRole.IMPROVER: [ImproverOutput()],
+            AgentRole.VERIFIER: [
+                VerifierOutput(approved=True, audit_notes="ok", feedback_message="ok")
+            ],
+        }
+    )
+
+    await _run(router, PlanTier.PRO)
+
+    audit_keys = [
+        key
+        for role, key in zip(router.calls, router.cache_keys, strict=True)
+        if role == AgentRole.VERIFIER
+    ]
+
+    assert audit_keys == ["verifier:calc.py"]
+
+
+async def test_documentation_is_not_part_of_the_cached_prefix():
+    """It changes after every rewrite; caching it would never hit."""
+    router = ScriptedRouter(
+        {
+            AgentRole.READER: [_reader_ok()],
+            AgentRole.WRITER: [WriterOutput(symbols=[_symbol("somar")])],
+            AgentRole.IMPROVER: [ImproverOutput()],
+            AgentRole.VERIFIER: [
+                VerifierOutput(approved=True, audit_notes="ok", feedback_message="ok")
+            ],
+        }
+    )
+
+    await _run(router, PlanTier.PRO)
+
+    audit_prefix = next(
+        prefix
+        for role, prefix in zip(router.calls, router.cacheable_prefixes, strict=True)
+        if role == AgentRole.VERIFIER
+    )
+
+    assert "DOCUMENTACAO GERADA" not in audit_prefix

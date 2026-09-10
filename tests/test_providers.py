@@ -258,3 +258,73 @@ def test_unverified_prices_are_flagged():
 
     assert "claude-opus-5" not in pendentes, "os precos da Anthropic vieram de fonte datada"
     assert pendentes, "check OpenAI and Google pricing before billing customers"
+
+
+# --------------------------------------------------------- prompt caching
+
+
+def test_short_prefix_is_not_marked_for_caching():
+    """Marking a prefix below the minimum is worse than not marking it.
+
+    Providers silently skip the cache under their threshold, but a cache write
+    is billed at a premium, so the request would pay more for nothing.
+    """
+    request = CompletionRequest(system="s", user="u", model="m", cacheable_prefix="x" * 1000)
+
+    assert not request.should_cache_prefix
+
+
+def test_long_prefix_is_marked_for_caching():
+    request = CompletionRequest(system="s", user="u", model="m", cacheable_prefix="x" * 8000)
+
+    assert request.should_cache_prefix
+
+
+def test_user_content_keeps_the_stable_prefix_first():
+    """Caching is prefix-based, so the stable half has to lead."""
+    request = CompletionRequest(system="s", user="VARIABLE", model="m", cacheable_prefix="STABLE")
+
+    assert request.user_content.startswith("STABLE")
+    assert request.user_content.endswith("VARIABLE")
+
+
+def test_user_content_falls_back_to_user_without_prefix():
+    request = CompletionRequest(system="s", user="only", model="m")
+
+    assert request.user_content == "only"
+
+
+def test_usage_accumulates_cache_tokens():
+    total = Usage(100, 50, cache_read_tokens=900) + Usage(10, 5, cache_read_tokens=100)
+
+    assert total.cache_read_tokens == 1000
+    assert total.input_tokens == 110
+
+
+async def test_router_passes_cacheable_prefix_to_the_provider():
+    class RecordingProvider(FakeProvider):
+        def __init__(self) -> None:
+            super().__init__("openai")
+            self.requests: list[CompletionRequest] = []
+
+        async def complete_structured(self, request: CompletionRequest, schema):
+            self.requests.append(request)
+            return await super().complete_structured(request, schema)
+
+    provider = RecordingProvider()
+    router = _router(
+        {ProviderName.OPENAI: provider},
+        routes={AgentRole.VERIFIER: RoutePolicy([ModelChoice(ProviderName.OPENAI, "gpt-4o")])},
+    )
+
+    await router.complete(
+        AgentRole.VERIFIER,
+        system="s",
+        user="changing part",
+        schema=Answer,
+        cacheable_prefix="stable part",
+        cache_key="verifier:src/app.py",
+    )
+
+    assert provider.requests[0].cacheable_prefix == "stable part"
+    assert provider.requests[0].cache_key == "verifier:src/app.py"

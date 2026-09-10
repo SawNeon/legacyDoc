@@ -54,7 +54,7 @@ class GeminiProvider:
         try:
             response = await self._client.aio.models.generate_content(
                 model=request.model,
-                contents=request.user,
+                contents=request.user_content,
                 config=config,
             )
         except genai_errors.ClientError as exc:

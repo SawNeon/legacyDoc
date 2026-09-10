@@ -50,7 +50,7 @@ class AnthropicProvider:
                 model=request.model,
                 max_tokens=request.max_output_tokens,
                 system=request.system,
-                messages=[{"role": "user", "content": request.user}],
+                messages=[{"role": "user", "content": _user_blocks(request)}],
                 output_format=schema,
             )
 
@@ -103,7 +103,7 @@ class AnthropicProvider:
             model=request.model,
             max_tokens=request.max_output_tokens,
             system=request.system,
-            messages=[{"role": "user", "content": request.user}],
+            messages=[{"role": "user", "content": _user_blocks(request)}],
             output_config={
                 "format": {
                     "type": "json_schema",
@@ -116,6 +116,23 @@ class AnthropicProvider:
 
     async def aclose(self) -> None:
         await self._client.close()
+
+
+def _user_blocks(request: CompletionRequest) -> list[dict]:
+    """Split the user turn so the stable prefix can carry a cache breakpoint.
+
+    Anthropic caches by prefix, so the cached block has to come first and stay
+    byte-identical between calls.
+    """
+    if not request.cacheable_prefix:
+        return [{"type": "text", "text": request.user}]
+
+    prefix_block: dict = {"type": "text", "text": request.cacheable_prefix}
+
+    if request.should_cache_prefix:
+        prefix_block["cache_control"] = {"type": "ephemeral"}
+
+    return [prefix_block, {"type": "text", "text": request.user}]
 
 
 def _first_text_block(response: object) -> str:
@@ -134,4 +151,6 @@ def _extract_usage(response: object) -> Usage:
     return Usage(
         input_tokens=getattr(usage, "input_tokens", 0) or 0,
         output_tokens=getattr(usage, "output_tokens", 0) or 0,
+        cache_read_tokens=getattr(usage, "cache_read_input_tokens", 0) or 0,
+        cache_write_tokens=getattr(usage, "cache_creation_input_tokens", 0) or 0,
     )

@@ -44,6 +44,8 @@ logger = logging.getLogger(__name__)
 
 ProgressCallback = Callable[[int, str], Awaitable[None]]
 
+MAX_AUDIT_CHARS = 60_000
+
 
 @dataclass
 class PipelineOptions:
@@ -304,13 +306,20 @@ class DocumentationPipeline:
             documentation_json = json.dumps(
                 [symbol.model_dump() for symbol in result.documentation.symbols],
                 ensure_ascii=False,
-            )[:60000]
+            )[:MAX_AUDIT_CHARS]
 
             try:
                 verdict = await self._router.complete(
                     AgentRole.VERIFIER,
                     system=prompts.verifier_system(context),
-                    user=prompts.verifier_user(source[:60000], documentation_json, file_path=path),
+                    # The source is identical on every round while the generated
+                    # documentation changes, so it leads the prompt as the cached
+                    # prefix and is billed at a fraction from the second round on.
+                    cacheable_prefix=prompts.verifier_source_block(
+                        source[:MAX_AUDIT_CHARS], file_path=path
+                    ),
+                    cache_key=f"verifier:{path}",
+                    user=prompts.verifier_documentation_block(documentation_json),
                     schema=VerifierOutput,
                 )
             except ProviderError as exc:
