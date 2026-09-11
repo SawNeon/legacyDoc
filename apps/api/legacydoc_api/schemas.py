@@ -195,6 +195,12 @@ class JobResponse(BaseModel):
     document_count: int = 0
     depth: str = Field(description="Profundidade efetivamente aplicada a este job.")
 
+    source: str | None = Field(
+        default=None,
+        description="O que foi analisado: a URL do repositorio ou o nome do arquivo. "
+        "Sem isto, uma lista de jobs so mostra datas e a pessoa nao reconhece qual e qual.",
+    )
+
 
 class JobListResponse(BaseModel):
     items: list[JobResponse]

@@ -307,4 +307,17 @@ def _to_response(job: Job, document_count: int) -> JobResponse:
         error_message=job.error_message,
         document_count=document_count,
         depth=(job.params or {}).get("depth", str(GenerationDepth.BASIC)),
+        source=_source_of(job),
     )
+
+
+def _source_of(job: Job) -> str | None:
+    """O que foi analisado, no formato que faz sentido para cada tipo de job.
+
+    Os parametros inteiros nao sao expostos: eles carregam o conteudo do
+    trecho enviado e o caminho do arquivo no disco do servidor, e nem um nem
+    outro tem por que voltar numa listagem.
+    """
+    params = job.params or {}
+
+    return params.get("repo_url") or params.get("original_filename") or params.get("path")

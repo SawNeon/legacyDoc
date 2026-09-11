@@ -391,6 +391,38 @@ async def test_job_listing_only_returns_the_callers_own(client: AsyncClient):
     assert [item["id"] for item in theirs["items"]] == [criados["dele"]]
 
 
+async def test_job_listing_says_what_was_analysed(client: AsyncClient):
+    """Sem isto a lista so mostra data e a pessoa nao reconhece qual e qual."""
+    headers, _ = await _register(client)
+
+    await client.post(
+        "/v1/jobs",
+        json={"job_type": "document_snippet", "path": "src/carrinho.py", "content": "x = 1"},
+        headers=headers,
+    )
+
+    item = (await client.get("/v1/jobs", headers=headers)).json()["items"][0]
+
+    assert item["source"] == "src/carrinho.py"
+
+
+async def test_job_listing_does_not_leak_the_submitted_content(client: AsyncClient):
+    """O trecho enviado fica no job, e nao tem por que voltar numa listagem."""
+    headers, _ = await _register(client)
+    segredo = "senha_do_banco = 'nao-me-exponha'"
+
+    await client.post(
+        "/v1/jobs",
+        json={"job_type": "document_snippet", "path": "a.py", "content": segredo},
+        headers=headers,
+    )
+
+    corpo = (await client.get("/v1/jobs", headers=headers)).text
+
+    assert segredo not in corpo
+    assert "params" not in corpo
+
+
 async def test_document_listing_only_returns_the_callers_own(client: AsyncClient, session):
     owner_headers, _ = await _register(client)
     other_headers, _ = await _register(client)
