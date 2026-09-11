@@ -6,6 +6,11 @@ dilutes the prompt, sending nothing yields the usual generic documentation.
 
 Criteria in order: a path glob matching the file, lexical overlap between the
 entry and the code, and the client-defined weight.
+
+An entry with neither a matching glob nor a single term in common with the file
+is dropped, whatever its weight. Weight ranks entries that are relevant; it is
+not a way to force an unrelated one into the prompt. Use a "**" glob to say an
+entry genuinely applies to every file.
 """
 
 from __future__ import annotations
@@ -110,6 +115,14 @@ def select_context(
         item_terms = _tokenize(f"{candidate.title} {candidate.content} {' '.join(candidate.tags)}")
         overlap = len(code_terms & item_terms)
         coverage = overlap / max(len(item_terms), 1)
+
+        # Nothing in common with this file and nobody asked for it to be here.
+        # Weight alone must not smuggle an entry in: a note about the payroll
+        # module sitting in a prompt about stock reservation is noise, and
+        # diluting the prompt is what this selection exists to prevent. An
+        # entry that really does apply everywhere says so with a "**" glob.
+        if not matched_glob and overlap == 0:
+            continue
 
         score = overlap + coverage * 5 + (candidate.weight / 100.0)
 

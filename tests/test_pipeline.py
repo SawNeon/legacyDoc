@@ -326,6 +326,73 @@ def test_selection_respects_the_character_budget():
     assert sum(len(item.content) for item in chosen) <= 2000
 
 
+def test_unrelated_context_is_dropped_whatever_its_weight():
+    """Weight ranks relevant entries; it must not force an unrelated one in.
+
+    A note about payroll sitting in a prompt about stock reservation is noise,
+    and diluting the prompt is exactly what this selection exists to prevent.
+    """
+    relevante = ContextCandidate(
+        id="1",
+        kind="domain_rule",
+        title="Bloqueio de estoque",
+        content="O estoque e bloqueado por 15 minutos quando o pedido entra.",
+        weight=100,
+    )
+    alheio = ContextCandidate(
+        id="2",
+        kind="freeform",
+        title="Historico do RH",
+        content="A folha de pagamento veio da aquisicao de 2011.",
+        weight=1000,
+    )
+
+    selected = select_context(
+        [relevante, alheio],
+        file_path="src/pedidos/estoque.py",
+        code_sample="def reservar_estoque(pedido, sku): ...",
+    )
+
+    assert [item.id for item in selected] == ["1"]
+
+
+def test_a_global_entry_opts_in_with_a_catch_all_glob():
+    """The escape hatch for guidance that really does apply to every file."""
+    global_rule = ContextCandidate(
+        id="1",
+        kind="convention",
+        title="Tom da documentacao",
+        content="Escreva em portugues formal, sem gerundio.",
+        path_globs=("**",),
+    )
+
+    selected = select_context(
+        [global_rule],
+        file_path="src/qualquer/coisa.py",
+        code_sample="x = 1",
+    )
+
+    assert [item.id for item in selected] == ["1"]
+
+
+def test_an_explicit_glob_that_misses_excludes_the_entry():
+    targeted = ContextCandidate(
+        id="1",
+        kind="architecture",
+        title="Fila de notificacao",
+        content="Notificacoes passam pela fila, nunca sincronas.",
+        path_globs=("src/notify/**",),
+    )
+
+    selected = select_context(
+        [targeted],
+        file_path="src/pedidos/estoque.py",
+        code_sample="def notificacao_fila(): ...",
+    )
+
+    assert selected == [], "o glob explicito e o cliente dizendo onde vale"
+
+
 def test_render_context_is_empty_without_items():
     assert render_context([]) == ""
 
