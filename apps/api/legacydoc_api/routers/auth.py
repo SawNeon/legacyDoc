@@ -345,4 +345,6 @@ def _plan_info(tier: str) -> PlanInfo:
         max_files_per_job=plan.max_files_per_job,
         max_concurrent_jobs=plan.max_concurrent_jobs,
         features=sorted(str(feature) for feature in plan.features),
+        max_depth=str(plan.max_depth),
+        available_depths=[str(depth) for depth in plan.available_depths],
     )

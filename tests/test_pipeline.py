@@ -7,6 +7,8 @@ discarded. No rewrite ever happened.
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 from legacydoc_agents import DocumentationPipeline, PipelineOptions
 from legacydoc_agents.context_selector import (
     ContextCandidate,
@@ -20,7 +22,7 @@ from legacydoc_core.domain import (
     VerifierOutput,
     WriterOutput,
 )
-from legacydoc_core.plans import PlanTier, get_plan
+from legacydoc_core.plans import GenerationDepth, PlanTier, get_plan, resolve_depth
 from legacydoc_parsing import detect_language
 from legacydoc_providers.base import StructuredResult, Usage
 from legacydoc_providers.router import AgentRole
@@ -90,11 +92,27 @@ def _reader_ok():
     return ReaderOutput()
 
 
-async def _run(router, plan_tier: PlanTier, *, options: PipelineOptions | None = None):
+async def _run(
+    router,
+    plan_tier: PlanTier,
+    *,
+    options: PipelineOptions | None = None,
+    depth: GenerationDepth | None = None,
+):
+    """Mirrors production: the depth is what was asked, capped by the plan.
+
+    Passing no depth means the caller wants everything the plan pays for,
+    which is what the API does when the request omits the field.
+    """
+    plan = get_plan(plan_tier)
+
     pipeline = DocumentationPipeline(
         router,
-        get_plan(plan_tier),
-        options or PipelineOptions(generate_summary=False),
+        plan,
+        replace(
+            options or PipelineOptions(generate_summary=False),
+            depth=resolve_depth(depth, plan),
+        ),
     )
 
     return await pipeline.run(

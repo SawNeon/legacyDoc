@@ -16,7 +16,7 @@ from legacydoc_core.archive import looks_like_zip
 from legacydoc_core.db import get_db
 from legacydoc_core.errors import ConflictError, NotFoundError, ValidationError
 from legacydoc_core.models import Document, Job, JobStatus, JobType
-from legacydoc_core.plans import Feature
+from legacydoc_core.plans import Feature, GenerationDepth, resolve_depth
 from legacydoc_core.queue import cancel_job, enqueue
 from legacydoc_core.repository import validate_repo_url
 from legacydoc_core.settings import Settings
@@ -67,13 +67,11 @@ async def create_job(
     if payload.webhook_url:
         principal.require(Feature.WEBHOOKS)
 
-    include_findings = payload.include_findings and principal.plan.allows(
-        Feature.IMPROVEMENT_FINDINGS
-    )
+    depth = resolve_depth(payload.depth, principal.plan)
 
     params: dict = {
         "output_language": payload.output_language,
-        "include_findings": include_findings,
+        "depth": str(depth),
     }
 
     if isinstance(payload, RepositoryJobRequest):
@@ -120,7 +118,7 @@ async def create_upload_job(
     file: UploadFile = File(..., description="Arquivo .zip com o codigo-fonte"),
     project_id: uuid.UUID | None = Form(default=None),
     output_language: str = Form(default="pt-BR"),
-    include_findings: bool = Form(default=True),
+    depth: GenerationDepth | None = Form(default=None),
     principal: Principal = Depends(get_principal),
     session: AsyncSession = Depends(get_db),
     settings: Settings = Depends(get_app_settings),
@@ -186,8 +184,7 @@ async def create_upload_job(
             "archive_path": str(destination),
             "original_filename": filename,
             "output_language": output_language,
-            "include_findings": include_findings
-            and principal.plan.allows(Feature.IMPROVEMENT_FINDINGS),
+            "depth": str(resolve_depth(depth, principal.plan)),
             "max_files": principal.plan.max_files_per_job,
         },
         priority=principal.plan.queue_priority,
@@ -309,4 +306,5 @@ def _to_response(job: Job, document_count: int) -> JobResponse:
         error_code=job.error_code,
         error_message=job.error_message,
         document_count=document_count,
+        depth=(job.params or {}).get("depth", str(GenerationDepth.BASIC)),
     )

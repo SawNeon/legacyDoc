@@ -30,7 +30,7 @@ from legacydoc_core.domain import (
     WriterOutput,
 )
 from legacydoc_core.errors import ProviderError
-from legacydoc_core.plans import Feature, PlanLimits
+from legacydoc_core.plans import Feature, GenerationDepth, PlanLimits
 from legacydoc_parsing.chunking import CodeChunk, build_chunks
 from legacydoc_parsing.languages import LanguageInfo
 from legacydoc_parsing.symbol_index import SymbolIndex, render_external_symbols
@@ -56,6 +56,10 @@ class PipelineOptions:
     """How many times the writer may rewrite after a verifier rejection."""
     generate_summary: bool = True
 
+    depth: GenerationDepth = GenerationDepth.BASIC
+    """Which agents run. Defaults to the cheapest pass on purpose: a caller
+    that forgets to set it spends the least, not the most."""
+
 
 @dataclass
 class PipelineResult:
@@ -80,6 +84,11 @@ class DocumentationPipeline:
         self._router = router
         self._plan = plan
         self._options = options or PipelineOptions()
+
+    @property
+    def depth(self) -> GenerationDepth:
+        """What this pipeline was built to run, for the caller to record."""
+        return self._options.depth
 
     async def run(
         self,
@@ -143,7 +152,7 @@ class DocumentationPipeline:
         result.documentation.symbols = symbols
         result.documentation.findings = findings
 
-        if symbols and self._plan.allows(Feature.VERIFIER_AGENT):
+        if symbols and options.depth.runs_verifier:
             await self._report(progress, 70, "Auditando fidelidade da documentacao...")
             await self._review_loop(result, source=source, path=path, context=prompt_context)
 
@@ -197,7 +206,7 @@ class DocumentationPipeline:
         documentation with a warning rather than nothing.
         """
         semaphore = asyncio.Semaphore(self._options.chunk_concurrency)
-        wants_findings = self._plan.allows(Feature.IMPROVEMENT_FINDINGS)
+        wants_findings = self._options.depth.runs_improver
 
         async def handle(chunk: CodeChunk):
             async with semaphore:

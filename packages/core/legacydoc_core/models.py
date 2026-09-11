@@ -29,6 +29,8 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.types import Uuid
 
+from legacydoc_core.plans import GenerationDepth
+
 JSONType = JSONB().with_variant(JSON(), "sqlite")
 
 
@@ -315,6 +317,16 @@ class Document(Base, TimestampMixin):
 
     symbols: Mapped[list[dict[str, Any]]] = mapped_column(JSONType, nullable=False, default=list)
     """Serialized SymbolDoc list: functions, classes and methods."""
+
+    depth: Mapped[str] = mapped_column(
+        String(20), nullable=False, default=str(GenerationDepth.BASIC)
+    )
+    """Which analysis actually produced this document.
+
+    Stored per document rather than read back from the job, so the answer
+    survives a plan change and the front can label each card without a second
+    request.
+    """
 
     markdown: Mapped[str | None] = mapped_column(Text)
 

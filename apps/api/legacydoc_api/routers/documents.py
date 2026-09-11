@@ -70,6 +70,7 @@ async def list_documents(
             summary=doc.summary,
             symbol_count=len(doc.symbols or []),
             finding_count=finding_counts.get(doc.id, 0),
+            depth=doc.depth,
             created_at=doc.created_at,
         )
         for doc in rows
@@ -98,6 +99,7 @@ async def get_document(
         # Findings are stored even when the plan hides them, so an upgrade
         # reveals prior analysis without reprocessing or re-billing tokens.
         findings_locked=bool(document.findings) and not shows_findings,
+        depth=document.depth,
         created_at=document.created_at,
     )
 

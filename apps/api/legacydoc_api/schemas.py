@@ -11,6 +11,7 @@ from datetime import datetime
 from typing import Any, Literal
 
 from legacydoc_core.domain import SymbolDoc
+from legacydoc_core.plans import GenerationDepth
 from pydantic import BaseModel, Field
 
 # ------------------------------------------------------------------- auth
@@ -41,6 +42,13 @@ class PlanInfo(BaseModel):
     max_files_per_job: int
     max_concurrent_jobs: int
     features: list[str]
+
+    max_depth: str = Field(description="Analise mais profunda que este plano pode pedir.")
+    available_depths: list[str] = Field(
+        default_factory=list,
+        description="Profundidades que este plano pode escolher, da mais barata para a mais cara. "
+        "O front monta o seletor a partir desta lista em vez de fixar a ordem no codigo.",
+    )
 
 
 class UserResponse(BaseModel):
@@ -142,7 +150,12 @@ class RepositoryJobRequest(BaseModel):
     )
     project_id: uuid.UUID | None = None
     output_language: str = Field(default="pt-BR")
-    include_findings: bool = True
+    depth: GenerationDepth | None = Field(
+        default=None,
+        description="Profundidade da analise. Omitido usa o maximo do plano. "
+        "Pedir acima do plano nao da erro: e reduzido ao teto, e a resposta "
+        "informa o que foi efetivamente usado.",
+    )
     webhook_url: str | None = None
 
 
@@ -154,7 +167,12 @@ class SnippetJobRequest(BaseModel):
     content: str = Field(min_length=1, max_length=1_000_000)
     project_id: uuid.UUID | None = None
     output_language: str = Field(default="pt-BR")
-    include_findings: bool = True
+    depth: GenerationDepth | None = Field(
+        default=None,
+        description="Profundidade da analise. Omitido usa o maximo do plano. "
+        "Pedir acima do plano nao da erro: e reduzido ao teto, e a resposta "
+        "informa o que foi efetivamente usado.",
+    )
     webhook_url: str | None = None
 
 
@@ -175,6 +193,7 @@ class JobResponse(BaseModel):
     error_code: str | None
     error_message: str | None
     document_count: int = 0
+    depth: str = Field(description="Profundidade efetivamente aplicada a este job.")
 
 
 class JobListResponse(BaseModel):
@@ -193,6 +212,7 @@ class DocumentSummaryResponse(BaseModel):
     summary: str | None
     symbol_count: int
     finding_count: int
+    depth: str
     created_at: datetime
 
 
@@ -221,6 +241,7 @@ class DocumentResponse(BaseModel):
         default=False,
         description="True quando existem pontos de melhoria, mas o plano atual nao os libera.",
     )
+    depth: str = Field(description="Profundidade que gerou este documento.")
     created_at: datetime
 
 

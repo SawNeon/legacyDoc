@@ -25,7 +25,7 @@ from legacydoc_core.models import (
     Project,
     User,
 )
-from legacydoc_core.plans import PlanTier, get_plan
+from legacydoc_core.plans import GenerationDepth, PlanTier, get_plan
 from legacydoc_core.security import (
     generate_api_key,
     hash_password,
@@ -205,6 +205,7 @@ async def command_seed_demo(args: argparse.Namespace) -> int:
                 path=SAMPLE_PATH,
                 language="python",
                 content_sha256=hashlib.sha256(SAMPLE_PATH.encode()).hexdigest(),
+                depth=str(GenerationDepth.PRO),
                 summary=(
                     "Modulo de fechamento de compra: valida o pedido contra o estoque "
                     "e calcula o frete antes de devolver o total."

@@ -160,7 +160,7 @@ def fake_router(monkeypatch) -> FakeRouter:
     return _Proxy()
 
 
-async def _queue_snippet_job(session, user) -> Job:
+async def _queue_snippet_job(session, user, *, depth: str = "pro") -> Job:
     job = await enqueue(
         session,
         user_id=user.id,
@@ -169,7 +169,7 @@ async def _queue_snippet_job(session, user) -> Job:
             "path": "src/carrinho.py",
             "content": SOURCE,
             "output_language": "pt-BR",
-            "include_findings": True,
+            "depth": depth,
         },
     )
     await session.commit()
@@ -231,7 +231,7 @@ async def test_usage_is_recorded_for_billing(session, pro_user, settings, fake_r
 
 async def test_free_plan_skips_the_expensive_agents(session, user, settings, fake_router):
     """The Free plan must not pay for the improver or the verifier."""
-    await _queue_snippet_job(session, user)
+    await _queue_snippet_job(session, user, depth="pro")
     claimed = await claim_job(session, worker_id="w1", lease_seconds=300)
     await session.commit()
 
@@ -297,3 +297,63 @@ async def test_document_export_works_end_to_end(session, pro_user, settings, fak
     assert ExporterFactory.get("pdf").export(documentation).content.startswith(b"%PDF")
     assert b"adicionar" in ExporterFactory.get("markdown").export(documentation).content
     assert b"calcular_total" in ExporterFactory.get("json").export(documentation).content
+
+
+async def test_standard_depth_buys_findings_without_the_audit(
+    session, pro_user, settings, fake_router
+):
+    """The middle rung exists to be genuinely cheaper than the top one.
+
+    The verifier is the single most expensive step of a job, so a depth that
+    skipped the improver instead would not save what the customer expects.
+    """
+    await _queue_snippet_job(session, pro_user, depth="standard")
+    claimed = await claim_job(session, worker_id="w1", lease_seconds=300)
+    await session.commit()
+
+    await JobProcessor(settings).process(session, claimed, worker_id="w1")
+    await session.commit()
+
+    assert AgentRole.IMPROVER in fake_router.calls
+    assert AgentRole.VERIFIER not in fake_router.calls
+    assert (await session.execute(select(Finding))).scalars().all()
+
+
+async def test_the_document_records_the_depth_that_produced_it(
+    session, pro_user, settings, fake_router
+):
+    """Stored per document so the front can label each card with one request."""
+    await _queue_snippet_job(session, pro_user, depth="standard")
+    claimed = await claim_job(session, worker_id="w1", lease_seconds=300)
+    await session.commit()
+
+    await JobProcessor(settings).process(session, claimed, worker_id="w1")
+    await session.commit()
+
+    document = (await session.execute(select(Document))).scalar_one()
+
+    assert document.depth == "standard"
+
+
+async def test_a_downgrade_while_queued_is_honoured(session, pro_user, settings, fake_router):
+    """A job can wait in the queue while the account changes plan.
+
+    Trusting the depth stored at creation would let someone enqueue on a paid
+    plan, drop to Free, and still be served the expensive agents.
+    """
+    await _queue_snippet_job(session, pro_user, depth="pro")
+
+    pro_user.plan_tier = "free"
+    await session.commit()
+
+    claimed = await claim_job(session, worker_id="w1", lease_seconds=300)
+    await session.commit()
+
+    await JobProcessor(settings).process(session, claimed, worker_id="w1")
+    await session.commit()
+
+    assert AgentRole.VERIFIER not in fake_router.calls
+    assert AgentRole.IMPROVER not in fake_router.calls
+
+    document = (await session.execute(select(Document))).scalar_one()
+    assert document.depth == "basic"

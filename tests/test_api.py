@@ -595,17 +595,26 @@ async def test_upload_respects_concurrency_limit(client: AsyncClient):
     assert segundo.status_code == 402, "the Free plan allows one concurrent job"
 
 
-async def test_upload_on_free_plan_disables_findings(client: AsyncClient, session):
+async def test_upload_on_free_plan_is_capped_to_the_cheapest_depth(client: AsyncClient, session):
+    """Asking beyond the plan is reduced, not refused.
+
+    A client that always sends the deepest option keeps working on every plan,
+    and the stored job says what will actually be paid for.
+    """
     headers, _ = await _register(client)
 
-    await client.post(
+    response = await client.post(
         "/v1/jobs/upload",
         headers=headers,
+        data={"depth": "pro"},
         files={"file": ("a.zip", _build_zip_bytes({"a.py": b"x = 1\n"}), "application/zip")},
     )
 
+    assert response.status_code == 202
+    assert response.json()["depth"] == "basic"
+
     job = (await session.execute(select(Job))).scalars().one()
-    assert job.params["include_findings"] is False
+    assert job.params["depth"] == "basic"
 
 
 async def _record_spend(session, user_id, valor: float) -> None:

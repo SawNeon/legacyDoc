@@ -21,7 +21,7 @@ from legacydoc_core.models import (
     UsageRecord,
     User,
 )
-from legacydoc_core.plans import get_plan
+from legacydoc_core.plans import GenerationDepth, get_plan, resolve_depth
 from legacydoc_core.queue import heartbeat
 from legacydoc_core.repository import RepoFile, RepositoryLoader, cleanup_directory
 from legacydoc_core.settings import Settings
@@ -72,12 +72,18 @@ class JobProcessor:
             usage_sink=self._make_usage_sink(session, job),
         )
 
+        # Resolved here and not read straight from the parameters: a job can
+        # sit in the queue while the account changes plan, and the plan in
+        # force at execution time is the one that decides what gets paid for.
+        depth = resolve_depth(params.get("depth"), plan)
+
         pipeline = DocumentationPipeline(
             router,
             plan,
             PipelineOptions(
                 output_language=params.get("output_language", "pt-BR"),
                 chunk_concurrency=self._settings.chunk_concurrency,
+                depth=depth,
             ),
         )
 
@@ -309,7 +315,7 @@ class JobProcessor:
                 {s.name: s.summary for s in result.documentation.symbols if s.summary},
             )
 
-            self._persist(session, job, repo_file, result)
+            self._persist(session, job, repo_file, result, depth=pipeline.depth)
             created += 1
 
             # Commit per file so a late failure keeps the files already paid for.
@@ -317,7 +323,15 @@ class JobProcessor:
 
         return JobOutcome(documents_created=created, warnings=warnings)
 
-    def _persist(self, session: AsyncSession, job: Job, repo_file: RepoFile, result) -> None:
+    def _persist(
+        self,
+        session: AsyncSession,
+        job: Job,
+        repo_file: RepoFile,
+        result,
+        *,
+        depth: GenerationDepth,
+    ) -> None:
         document = Document(
             job_id=job.id,
             project_id=job.project_id,
@@ -325,6 +339,7 @@ class JobProcessor:
             path=repo_file.path,
             language=repo_file.language,
             content_sha256=repo_file.sha256,
+            depth=str(depth),
             summary=result.documentation.summary or None,
             symbols=[symbol.model_dump(mode="json") for symbol in result.documentation.symbols],
         )
