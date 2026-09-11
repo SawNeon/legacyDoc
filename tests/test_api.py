@@ -361,6 +361,49 @@ async def test_job_is_not_visible_to_another_user(client: AsyncClient):
     assert (await client.get(f"/v1/jobs/{job_id}", headers=owner_headers)).status_code == 200
 
 
+async def test_job_listing_only_returns_the_callers_own(client: AsyncClient):
+    """The listing is what the history screen reads.
+
+    Buscar um job alheio pelo id ja era recusado, mas a listagem e outro
+    caminho: se ela vazasse, a tela de historico mostraria analise de outra
+    conta sem ninguem precisar adivinhar id nenhum.
+    """
+    owner_headers, _ = await _register(client)
+    other_headers, _ = await _register(client)
+
+    # Uma analise para cada conta. Duas para a mesma esbarraria no limite de
+    # jobs simultaneos do plano Free, e o alvo aqui e o filtro por dono.
+    criados = {}
+
+    for rotulo, headers in (("meu", owner_headers), ("dele", other_headers)):
+        resposta = await client.post(
+            "/v1/jobs",
+            json={"job_type": "document_snippet", "path": "a.py", "content": "def f(): pass"},
+            headers=headers,
+        )
+        assert resposta.status_code == 202, resposta.text
+        criados[rotulo] = resposta.json()["id"]
+
+    mine = (await client.get("/v1/jobs", headers=owner_headers)).json()
+    theirs = (await client.get("/v1/jobs", headers=other_headers)).json()
+
+    assert [item["id"] for item in mine["items"]] == [criados["meu"]]
+    assert [item["id"] for item in theirs["items"]] == [criados["dele"]]
+
+
+async def test_document_listing_only_returns_the_callers_own(client: AsyncClient, session):
+    owner_headers, _ = await _register(client)
+    other_headers, _ = await _register(client)
+
+    await _seed_document(session, client, owner_headers)
+
+    mine = (await client.get("/v1/documents", headers=owner_headers)).json()
+    theirs = (await client.get("/v1/documents", headers=other_headers)).json()
+
+    assert len(mine) == 1
+    assert theirs == []
+
+
 async def test_cancel_queued_job(client: AsyncClient):
     headers, _ = await _register(client)
 
