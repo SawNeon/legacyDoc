@@ -18,7 +18,10 @@ down_revision: str | None = None
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
-JSONB = postgresql.JSONB(astext_type=sa.Text())
+# Mesmo tipo dos modelos, e pelo mesmo motivo: JSONB cru so compila no
+# Postgres, entao a migration nao rodava em mais lugar nenhum. Producao
+# continua usando JSONB; o variant so decide o que emitir fora dele.
+JSONB = postgresql.JSONB(astext_type=sa.Text()).with_variant(sa.JSON(), "sqlite")
 
 
 def upgrade() -> None:
