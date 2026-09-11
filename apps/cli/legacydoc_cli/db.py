@@ -200,13 +200,28 @@ async def command_wait(args: argparse.Namespace) -> int:
             await asyncio.sleep(args.interval)
 
 
+def _password_for(args: argparse.Namespace, settings: Settings) -> str:
+    """Ask for a password only when one is actually going to be stored.
+
+    With --update the command only changes the plan, so prompting first hangs
+    any non-interactive caller: a deploy script, a container entrypoint, a CI
+    step. It has to read what the command will do before asking for anything.
+    """
+    if args.update:
+        return ""
+
+    password = args.password or getpass.getpass("Senha: ")
+    validate_password_strength(password, settings.min_password_length)
+
+    return password
+
+
 async def command_create_user(args: argparse.Namespace) -> int:
     settings = get_settings()
 
     try:
         email = validate_email(args.email)
-        password = args.password or getpass.getpass("Senha: ")
-        validate_password_strength(password, settings.min_password_length)
+        password = _password_for(args, settings)
     except ValidationError as error:
         print(Style.failure(f"  {error.message}"))
         return 1
@@ -228,6 +243,10 @@ async def command_create_user(args: argparse.Namespace) -> int:
                 existing.plan_tier = args.plan
                 print(Style.success(f"  {email}: plano {previous_plan} -> {args.plan}"))
                 return 0
+
+            if not password:
+                print(Style.failure(f"  {email} nao existe. Remova --update para cria-la."))
+                return 1
 
             session.add(
                 User(
