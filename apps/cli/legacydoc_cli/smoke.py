@@ -19,7 +19,7 @@ from pathlib import Path
 
 from legacydoc_agents import DocumentationPipeline, PipelineOptions
 from legacydoc_core.errors import LegacyDocError
-from legacydoc_core.plans import PlanTier, get_plan
+from legacydoc_core.plans import DEPTH_ORDER, GenerationDepth, PlanTier, get_plan, resolve_depth
 from legacydoc_core.settings import Settings
 from legacydoc_exporters import ExporterFactory
 from legacydoc_parsing import build_chunks, detect_language, parse_file
@@ -174,10 +174,26 @@ def report_documentation(documentation) -> None:
         print()
 
 
-def report_findings(documentation, plan_name: str) -> None:
+def _agents_for(depth: GenerationDepth) -> str:
+    agents = ["reader", "writer"]
+
+    if depth.runs_improver:
+        agents.append("improver")
+    if depth.runs_verifier:
+        agents.append("verifier")
+
+    return ", ".join([*agents, "summarizer"])
+
+
+def report_findings(documentation, depth: GenerationDepth) -> None:
     if not documentation.findings:
-        if plan_name == "free":
-            print(Style.dim("\n  (the Free plan produces no findings - try --plan pro)"))
+        if not depth.runs_improver:
+            print(
+                Style.dim(
+                    f"\n  (depth {depth} produces no findings - "
+                    "try --depth standard on a paid plan)"
+                )
+            )
         return
 
     section("6. Improvement findings")
@@ -273,8 +289,14 @@ async def run(args: argparse.Namespace) -> int:
         return 1
 
     plan = get_plan(PlanTier(args.plan))
+    depth = resolve_depth(args.depth, plan)
 
-    section(f"4. Pipeline (plan {plan.display_name})")
+    section(f"4. Pipeline (plan {plan.display_name}, depth {depth})")
+
+    if args.depth and depth != args.depth:
+        print(Style.warning(f"  Depth {args.depth} capped to {depth} by the {plan.tier} plan."))
+
+    print(Style.dim(f"  agents: {_agents_for(depth)}"))
     print(Style.dim("  real LLM calls start here - this spends money\n"))
 
     pipeline = DocumentationPipeline(
@@ -285,6 +307,7 @@ async def run(args: argparse.Namespace) -> int:
             max_tokens_per_chunk=args.chunk_tokens,
             chunk_concurrency=args.concurrency,
             generate_summary=True,
+            depth=depth,
         ),
     )
 
@@ -314,7 +337,7 @@ async def run(args: argparse.Namespace) -> int:
     await router.aclose()
 
     report_documentation(result.documentation)
-    report_findings(result.documentation, args.plan)
+    report_findings(result.documentation, depth)
 
     if result.warnings:
         section("Warnings")
@@ -354,7 +377,13 @@ def build_parser() -> argparse.ArgumentParser:
         "--plan",
         default="free",
         choices=[str(tier) for tier in PlanTier],
-        help="Plan to simulate. 'pro' enables Improver and Verifier.",
+        help="Plan to simulate. It caps the depth; it no longer picks the agents.",
+    )
+    parser.add_argument(
+        "--depth",
+        choices=[str(item) for item in DEPTH_ORDER],
+        help="Analysis depth: basic writes, standard adds findings, pro adds the audit. "
+        "Omitted uses the deepest the plan allows.",
     )
     parser.add_argument("--language", default="pt-BR", help="Documentation output language")
     parser.add_argument("--chunk-tokens", type=int, default=6000, help="Budget per chunk")
