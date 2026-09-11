@@ -268,6 +268,110 @@ async def test_findings_are_sorted_by_severity():
     assert [f.title for f in result.documentation.findings] == ["Critico", "Baixo"]
 
 
+async def test_finding_line_numbers_come_from_the_parser():
+    """The first real run produced findings pointing at the wrong lines.
+
+    A finding that sends the reader to the wrong place is worse than no
+    finding: they trust it, land somewhere unrelated, and then distrust the
+    rest of the document.
+    """
+    router = ScriptedRouter(
+        {
+            AgentRole.READER: [_reader_ok()],
+            AgentRole.WRITER: [WriterOutput(symbols=[_symbol("dividir")])],
+            AgentRole.IMPROVER: [
+                ImproverOutput(
+                    findings=[
+                        FindingDraft(
+                            category="correctness",
+                            severity="high",
+                            title="Divisao sem guarda",
+                            detail="d",
+                            symbol_name="dividir",
+                            line_start=99,
+                            line_end=120,
+                        )
+                    ]
+                )
+            ],
+            AgentRole.VERIFIER: [
+                VerifierOutput(approved=True, audit_notes="ok", feedback_message="ok")
+            ],
+        }
+    )
+
+    result = await _run(router, PlanTier.PRO)
+    finding = result.documentation.findings[0]
+
+    # dividir ocupa as linhas 4 a 7 de SOURCE.
+    assert (finding.line_start, finding.line_end) == (4, 7)
+
+
+async def test_a_finding_about_an_invented_symbol_is_discarded():
+    """Same defence the documented symbols already had."""
+    router = ScriptedRouter(
+        {
+            AgentRole.READER: [_reader_ok()],
+            AgentRole.WRITER: [WriterOutput(symbols=[_symbol("somar")])],
+            AgentRole.IMPROVER: [
+                ImproverOutput(
+                    findings=[
+                        FindingDraft(
+                            category="security",
+                            severity="critical",
+                            title="Injecao em processar_pagamento",
+                            detail="d",
+                            symbol_name="processar_pagamento",
+                        )
+                    ]
+                )
+            ],
+            AgentRole.VERIFIER: [
+                VerifierOutput(approved=True, audit_notes="ok", feedback_message="ok")
+            ],
+        }
+    )
+
+    result = await _run(router, PlanTier.PRO)
+
+    assert result.documentation.findings == []
+    assert any("processar_pagamento" in warning for warning in result.warnings)
+
+
+async def test_a_file_level_finding_is_kept_without_a_line_range():
+    """Nothing can confirm the range, so it is cleared rather than trusted."""
+    router = ScriptedRouter(
+        {
+            AgentRole.READER: [_reader_ok()],
+            AgentRole.WRITER: [WriterOutput(symbols=[_symbol("somar")])],
+            AgentRole.IMPROVER: [
+                ImproverOutput(
+                    findings=[
+                        FindingDraft(
+                            category="testing",
+                            severity="medium",
+                            title="Arquivo sem testes",
+                            detail="d",
+                            line_start=42,
+                            line_end=50,
+                        )
+                    ]
+                )
+            ],
+            AgentRole.VERIFIER: [
+                VerifierOutput(approved=True, audit_notes="ok", feedback_message="ok")
+            ],
+        }
+    )
+
+    result = await _run(router, PlanTier.PRO)
+    finding = result.documentation.findings[0]
+
+    assert finding.title == "Arquivo sem testes"
+    assert finding.line_start is None
+    assert finding.line_end is None
+
+
 async def test_empty_file_returns_warning_not_crash():
     router = ScriptedRouter({AgentRole.READER: [_reader_ok()]})
 

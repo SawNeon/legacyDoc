@@ -240,7 +240,9 @@ class DocumentationPipeline:
             if isinstance(improved, Exception):
                 logger.warning("Improver falhou no bloco %s de %s: %s", chunk.index, path, improved)
             elif improved is not None:
-                findings.extend(improved.findings)
+                anchored, unanchored = self._anchor_findings(improved.findings, chunk)
+                findings.extend(anchored)
+                discarded.extend(unanchored)
 
         return (
             _dedupe_symbols(symbols),
@@ -285,8 +287,14 @@ class DocumentationPipeline:
         *,
         path: str,
     ) -> ImproverOutput:
+        # Kind and owner are included because without them the model guesses.
+        # The first real run had it call a module-level function a method of
+        # the neighbouring class and suggest it use `self`, which would have
+        # broken the code had anyone followed the advice.
         hints = "\n".join(
-            f"- {symbol.name}: complexidade ~{symbol.complexity}, {symbol.line_count} linhas"
+            f"- {symbol.name}: {_describe_span(symbol)}, "
+            f"linhas {symbol.line_start}-{symbol.line_end}, "
+            f"complexidade ~{symbol.complexity}"
             for symbol in chunk.symbols
         )
 
@@ -451,6 +459,57 @@ class DocumentationPipeline:
             file_path=file_path,
         )
 
+    def _anchor_findings(
+        self, findings: list[FindingDraft], chunk: CodeChunk
+    ) -> tuple[list[FindingDraft], list[str]]:
+        """Give findings the same grounding the documented symbols already get.
+
+        Until the first real run this was missing, and it showed immediately:
+        both findings produced pointed at line ranges the symbol did not
+        occupy. A finding that sends the reader to the wrong line is worse than
+        no finding, because the reader trusts it and then distrusts the rest.
+
+        Line numbers come from the parser, never from the model. A finding
+        about a symbol the parser never saw is discarded, the same treatment an
+        invented symbol gets. A finding about the file as a whole is kept, but
+        loses its line range: nothing here can confirm it.
+        """
+        if not chunk.symbols:
+            return findings, []
+
+        spans_by_name = _spans_by_name(chunk)
+
+        accepted: list[FindingDraft] = []
+        discarded: list[str] = []
+
+        for finding in findings:
+            if not finding.symbol_name:
+                accepted.append(finding.model_copy(update={"line_start": None, "line_end": None}))
+                continue
+
+            span = spans_by_name.get(finding.symbol_name)
+
+            if span is None:
+                logger.warning(
+                    "Finding sobre '%s', ausente do codigo em %s; descartado.",
+                    finding.symbol_name,
+                    chunk.symbol_names,
+                )
+                discarded.append(finding.symbol_name)
+                continue
+
+            accepted.append(
+                finding.model_copy(
+                    update={
+                        "symbol_name": span.name,
+                        "line_start": span.line_start,
+                        "line_end": span.line_end,
+                    }
+                )
+            )
+
+        return accepted, discarded
+
     def _enrich(
         self, symbols: list[SymbolDoc], chunk: CodeChunk, language: str
     ) -> tuple[list[SymbolDoc], list[str]]:
@@ -475,15 +534,7 @@ class DocumentationPipeline:
         if not chunk.symbols:
             return symbols, []
 
-        spans_by_name: dict[str, SymbolSpan] = {}
-
-        for span in chunk.symbols:
-            spans_by_name[span.name] = span
-
-            # The model returns Class.method while the parser stores method plus parent.
-            if span.parent:
-                spans_by_name[f"{span.parent}.{span.name}"] = span
-                spans_by_name[f"{span.parent.rsplit('.', 1)[-1]}.{span.name}"] = span
+        spans_by_name = _spans_by_name(chunk)
 
         accepted: list[SymbolDoc] = []
         discarded: list[str] = []
@@ -534,6 +585,29 @@ def _dedupe_symbols(symbols: list[SymbolDoc]) -> list[SymbolDoc]:
             best[key] = symbol
 
     return sorted(best.values(), key=lambda s: (s.line_start, s.name))
+
+
+def _describe_span(span: SymbolSpan) -> str:
+    """How the parser sees a symbol, phrased for a prompt."""
+    if span.parent:
+        return f"{span.kind} de {span.parent}"
+
+    return f"{span.kind} no nivel do modulo"
+
+
+def _spans_by_name(chunk: CodeChunk) -> dict[str, SymbolSpan]:
+    """Index the parser spans under every name a model might use for them."""
+    spans: dict[str, SymbolSpan] = {}
+
+    for span in chunk.symbols:
+        spans[span.name] = span
+
+        # The model returns Class.method while the parser stores method plus parent.
+        if span.parent:
+            spans[f"{span.parent}.{span.name}"] = span
+            spans[f"{span.parent.rsplit('.', 1)[-1]}.{span.name}"] = span
+
+    return spans
 
 
 def _dedupe_findings(findings: list[FindingDraft]) -> list[FindingDraft]:
