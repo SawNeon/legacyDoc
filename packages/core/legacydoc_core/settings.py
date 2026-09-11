@@ -87,7 +87,21 @@ class Settings(BaseSettings):
     own limit, a hundred of them can add up past what the operator can pay.
     Once reached, no new job is accepted until the month rolls over.
     """
-    """Entry ceiling for an archive, guarding against inode exhaustion."""
+
+    rate_limit_enabled: bool = Field(default=True)
+    """Per-IP throttling inside the application.
+
+    Kept on by default so the API is protected wherever it runs, including
+    without nginx in front of it.
+    """
+
+    trust_proxy_headers: bool = Field(default=False)
+    """Whether X-Forwarded-For may be believed.
+
+    Only true when a reverse proxy the operator controls sits in front and
+    rewrites the header. With it on and no such proxy, any caller can forge an
+    address and hand itself a fresh allowance.
+    """
 
     # ------------------------------------------------------------------ worker
     worker_concurrency: int = Field(default=4, ge=1, le=64)

@@ -49,6 +49,9 @@ services:
       - 0.0.0.0
       - --port
       - "8000"
+      # O rate limit da aplicacao e por processo, entao com 2 workers o teto
+      # efetivo por IP dobra. Quem garante o numero exato por IP e o
+      # limit_req do nginx, que ve todas as requisicoes em um lugar so.
       - --workers
       - "2"
     env_file: [../.env]

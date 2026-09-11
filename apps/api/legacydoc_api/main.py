@@ -20,6 +20,7 @@ from legacydoc_core.db import dispose_engine, init_engine
 from legacydoc_core.errors import LegacyDocError, ValidationError
 from legacydoc_core.settings import Settings, get_settings
 
+from legacydoc_api.ratelimit import RateLimitMiddleware
 from legacydoc_api.routers import auth, documents, jobs, meta, projects
 
 logger = logging.getLogger(__name__)
@@ -49,6 +50,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         root_path=resolved.api_root_path,
     )
     app.state.settings = resolved
+
+    # Added before CORS on purpose: Starlette runs the last registered
+    # middleware first, so CORS stays outermost and a 429 still carries the
+    # headers the browser needs to show it as a real response.
+    if resolved.rate_limit_enabled:
+        app.add_middleware(RateLimitMiddleware, settings=resolved)
 
     app.add_middleware(
         CORSMiddleware,

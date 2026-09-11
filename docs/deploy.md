@@ -54,6 +54,12 @@ Preencha no `.env`, mais `OPENAI_API_KEY` e `ALLOWED_ORIGINS` com a URL real do
 front. A aplicação **recusa subir** sem `JWT_SECRET_KEY` e recusa `*` em
 `ALLOWED_ORIGINS` — as duas falhas que a v1 tinha em produção.
 
+Marque também `TRUST_PROXY_HEADERS=true`. Atrás do nginx toda requisição chega
+com o endereço do próprio proxy, então sem isso o rate limit da aplicação
+coloca a internet inteira no mesmo balde. Só ligue quando o nginx desta receita
+estiver na frente: ligado sem proxy, qualquer chamador forja um
+`X-Forwarded-For` e se dá um limite novo.
+
 ## 3. Subir
 
 > A v2 escuta em **127.0.0.1:8001**, não 8000 — a v1 ocupa a 8000 e as duas
@@ -174,5 +180,4 @@ Só depois de a v2 rodar alguns dias com uso real:
 - [ ] Backup no cron **e uma restauração testada**
 - [ ] Preços de OpenAI conferidos em `packages/providers/legacydoc_providers/catalog.py`
       (estão `verified=False` e alimentam o faturamento)
-- [ ] Cota em dólar por plano — hoje a cota é por número de jobs, e o teto do
-      plano Team dá exposição de cinco dígitos por usuário
+- [ ] `TRUST_PROXY_HEADERS=true` **e** o nginx na frente, nunca um sem o outro

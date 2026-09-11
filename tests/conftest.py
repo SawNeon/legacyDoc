@@ -20,6 +20,9 @@ os.environ.setdefault("JWT_SECRET_KEY", "chave-de-teste-com-mais-de-32-caractere
 os.environ.setdefault("ALLOWED_ORIGINS", "http://localhost:5173")
 os.environ.setdefault("ENVIRONMENT", "test")
 os.environ.setdefault("MIN_PASSWORD_LENGTH", "10")
+# Every test call arrives from the same fake address, so a shared bucket
+# would make results depend on test order. test_ratelimit.py turns it back on.
+os.environ.setdefault("RATE_LIMIT_ENABLED", "false")
 
 from httpx import ASGITransport, AsyncClient  # noqa: E402
 from legacydoc_core import db as db_module  # noqa: E402
