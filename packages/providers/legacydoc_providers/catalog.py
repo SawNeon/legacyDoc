@@ -4,8 +4,8 @@ Pricing feeds `usage_records`, which is the billing basis, so each entry
 carries `verified_at` and `verified`. A guessed price that reaches an invoice
 is a silent loss.
 
-Anthropic prices come from the official reference dated 2026-06-24. OpenAI and
-Google entries are marked unverified: check their pricing pages before billing.
+Anthropic prices come from the official reference dated 2026-06-24, OpenAI from
+its pricing table read on 2026-09-11. Google entries remain unverified.
 """
 
 from __future__ import annotations
@@ -73,7 +73,12 @@ _MODELS: dict[str, ModelSpec] = {
         verified=True,
     ),
     # ---------------------------------------------------------------- OpenAI
-    # PRICES NOT VERIFIED. Check before billing.
+    # Fonte: tabela oficial de precos da OpenAI, consultada em 2026-09-11.
+    #
+    # Os dois sao modelos de 2024 e continuam sendo a rota padrao por inercia,
+    # nao por escolha. A familia mais nova e varias vezes mais barata para o
+    # mesmo trabalho; ver docs/custos.md antes de mexer, porque trocar exige
+    # confirmar suporte a saida estruturada e medir qualidade, nao so preco.
     "gpt-4o-mini": ModelSpec(
         provider=ProviderName.OPENAI,
         model_id="gpt-4o-mini",
@@ -81,7 +86,8 @@ _MODELS: dict[str, ModelSpec] = {
         max_output_tokens=16_384,
         input_usd_per_mtok=0.15,
         output_usd_per_mtok=0.60,
-        verified=False,
+        verified_at="2026-09-11",
+        verified=True,
     ),
     "gpt-4o": ModelSpec(
         provider=ProviderName.OPENAI,
@@ -90,7 +96,8 @@ _MODELS: dict[str, ModelSpec] = {
         max_output_tokens=16_384,
         input_usd_per_mtok=2.50,
         output_usd_per_mtok=10.00,
-        verified=False,
+        verified_at="2026-09-11",
+        verified=True,
     ),
     # ---------------------------------------------------------------- Google
     # PRICES NOT VERIFIED. Check before billing.
