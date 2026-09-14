@@ -2,6 +2,11 @@
 
 The URL always comes from DATABASE_URL, never from alembic.ini, so there is no
 second copy of the credentials in the repository.
+
+It is read the same way the application reads it: an exported environment
+variable first, then the project `.env`. Reading only the environment made
+`alembic upgrade head` fail on a machine whose `.env` was correct, because the
+API picked the value up from the file and the migration did not.
 """
 
 from __future__ import annotations
@@ -22,10 +27,19 @@ target_metadata = Base.metadata
 def _database_url() -> str:
     url = os.getenv("DATABASE_URL")
 
-    if not url:
-        raise RuntimeError("DATABASE_URL nao definida; o Alembic nao sabe onde migrar.")
+    if url:
+        return url
 
-    return url
+    # Only loaded when the variable is not exported, so rendering SQL in CI
+    # keeps working without the other settings the application requires.
+    from legacydoc_core.settings import get_settings
+
+    try:
+        return get_settings().database_url
+    except Exception as exc:
+        raise RuntimeError(
+            "DATABASE_URL nao definida no ambiente nem no .env; o Alembic nao sabe onde migrar."
+        ) from exc
 
 
 def run_migrations_offline() -> None:
