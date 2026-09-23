@@ -15,7 +15,7 @@ python -m legacydoc_cli.db wait --timeout "${TIMEOUT}"
 # Verificacao de schema apenas informativa: quem migra e o servico `migrate`.
 # Falhar aqui deixaria a API fora do ar por um problema que o operador resolve
 # com um comando, entao apenas avisamos alto.
-if ! python -m legacydoc_cli.db check --tolerante > /dev/null 2>&1; then
+if ! python -m legacydoc_cli.db check --tolerant > /dev/null 2>&1; then
     echo "[entrypoint] AVISO: 'db check' reprovou. Rode 'alembic upgrade head'."
 fi
 
