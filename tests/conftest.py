@@ -52,6 +52,12 @@ async def engine():
         connect_args={"check_same_thread": False},
     )
 
+    # Sem isto o SQLite ignora chave estrangeira, e os testes nunca veriam um
+    # `ON DELETE` que a producao aplica.
+    from legacydoc_core.db import _enforce_sqlite_foreign_keys
+
+    _enforce_sqlite_foreign_keys(engine)
+
     async with engine.begin() as connection:
         await connection.run_sync(Base.metadata.create_all)
 

@@ -21,7 +21,7 @@ from legacydoc_core.errors import LegacyDocError, ValidationError
 from legacydoc_core.settings import Settings, get_settings
 
 from legacydoc_api.ratelimit import RateLimitMiddleware
-from legacydoc_api.routers import auth, documents, jobs, meta, projects
+from legacydoc_api.routers import admin, auth, documents, jobs, meta, projects
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +68,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     _register_exception_handlers(app, resolved)
 
-    for module in (auth, projects, jobs, documents, meta):
+    for module in (auth, projects, jobs, documents, meta, admin):
         app.include_router(module.router)
 
     @app.get("/health", tags=["meta"])

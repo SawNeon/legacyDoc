@@ -128,6 +128,23 @@ async def _user_from_api_key(token: str, session: AsyncSession) -> User:
     raise AuthenticationError("Chave de API invalida ou revogada.")
 
 
+async def require_admin(principal: Principal = Depends(get_principal)) -> Principal:
+    """Acesso ao painel de contas.
+
+    Recusa chave de API de proposito, aceitando apenas sessao. Chave e uma
+    credencial longa, feita para ficar guardada em maquina de CI e no editor;
+    transformar isso em acesso administrativo significaria que um vazamento de
+    chave entrega o painel junto.
+
+    Responde 404, e nao 403, pelo mesmo motivo do resto da API: 403 confirmaria
+    para quem esta sondando que existe um painel neste caminho.
+    """
+    if principal.via_api_key or not principal.user.is_admin:
+        raise NotFoundError("Recurso nao encontrado.")
+
+    return principal
+
+
 # ------------------------------------------------------------------- cotas
 
 

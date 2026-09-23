@@ -113,6 +113,16 @@ class User(Base, TimestampMixin):
     plan_tier: Mapped[str] = mapped_column(String(20), nullable=False, default="free")
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
+    is_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    """Acesso ao painel de contas.
+
+    Uma marca booleana, e nao um sistema de papeis: a equipe tem cinco pessoas,
+    e papel com permissao granular sem ninguem para diferenciar so acrescenta
+    codigo que ninguem exercita. A promocao acontece apenas pela linha de
+    comando, nunca por HTTP, para que ganhar privilegio nao seja uma rota que
+    alguem possa alcancar.
+    """
+
     failed_login_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     """Reset on every successful login."""
 
@@ -384,6 +394,45 @@ class UsageRecord(Base):
     cost_usd: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     latency_ms: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     succeeded: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class AdminAction(Base):
+    """Registro de toda acao administrativa sobre uma conta.
+
+    Existe porque daqui a tres meses ninguem vai lembrar por que uma conta esta
+    no plano Team. E quando a cobranca entrar, o gateway passa a mandar o plano
+    pelo webhook: sem este registro, uma troca feita na mao vira um conflito
+    silencioso entre o que a pessoa pagou e o que ela tem.
+
+    O e-mail do autor e do alvo sao copiados no momento da acao. A chave
+    estrangeira sozinha nao basta: se a conta for apagada, o registro
+    continuaria existindo sem dizer de quem era.
+    """
+
+    __tablename__ = "admin_actions"
+    __table_args__ = (Index("ix_admin_actions_target", "target_user_id", "created_at"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+
+    actor_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    actor_email: Mapped[str] = mapped_column(String(320), nullable=False)
+
+    target_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
+    target_email: Mapped[str] = mapped_column(String(320), nullable=False)
+
+    action: Mapped[str] = mapped_column(String(40), nullable=False)
+    value_before: Mapped[str | None] = mapped_column(String(120))
+    value_after: Mapped[str | None] = mapped_column(String(120))
+
+    reason: Mapped[str] = mapped_column(String(500), nullable=False)
+    """Obrigatorio. Uma troca de plano sem motivo escrito e a que ninguem
+    consegue explicar depois."""
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

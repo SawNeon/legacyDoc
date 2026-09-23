@@ -271,6 +271,58 @@ async def command_create_user(args: argparse.Namespace) -> int:
         await dispose_engine()
 
 
+async def command_set_admin(args: argparse.Namespace) -> int:
+    """Concede ou revoga acesso ao painel de contas.
+
+    Existe como comando e nao como rota de propósito: ganhar privilégio
+    administrativo não deve ser algo que se alcance por HTTP. Quem promove
+    precisa de acesso ao servidor, e isso é a intenção.
+    """
+    settings = get_settings()
+
+    try:
+        email = validate_email(args.email)
+    except ValidationError as error:
+        print(Style.failure(f"  {error.message}"))
+        return 1
+
+    init_engine(settings)
+
+    try:
+        async with session_scope() as session:
+            user = (
+                await session.execute(select(User).where(User.email == email))
+            ).scalar_one_or_none()
+
+            if user is None:
+                print(Style.failure(f"  {email} nao existe."))
+                return 1
+
+            conceder = not args.revoke
+
+            if user.is_admin == conceder:
+                estado = "ja e" if conceder else "ja nao e"
+                print(Style.warning(f"  {email} {estado} administrador."))
+                return 0
+
+            user.is_admin = conceder
+
+            acao = "promovido a" if conceder else "removido de"
+            print(Style.success(f"  {email} {acao} administrador."))
+
+            if conceder:
+                print(
+                    Style.dim(
+                        "  O painel recusa chave de API: entre com e-mail e "
+                        "senha para que a sessao valha."
+                    )
+                )
+
+            return 0
+    finally:
+        await dispose_engine()
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="python -m legacydoc_cli.db",
@@ -302,6 +354,15 @@ def build_parser() -> argparse.ArgumentParser:
         "--update", action="store_true", help="Se a conta existir, apenas troca o plano"
     )
     create_user.set_defaults(handler=command_create_user)
+
+    set_admin = subcommands.add_parser(
+        "set-admin", help="Concede ou revoga acesso ao painel de contas"
+    )
+    set_admin.add_argument("email")
+    set_admin.add_argument(
+        "--revoke", action="store_true", help="Remove o acesso em vez de conceder"
+    )
+    set_admin.set_defaults(handler=command_set_admin)
 
     register_seed_demo(subcommands)
 

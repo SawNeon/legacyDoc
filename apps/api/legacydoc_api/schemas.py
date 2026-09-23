@@ -276,3 +276,65 @@ class PasswordResetRequest(BaseModel):
 class PasswordResetConfirm(BaseModel):
     token: str = Field(min_length=16)
     new_password: str
+
+
+# ------------------------------------------------------------------ admin
+
+
+class AdminAccountResponse(BaseModel):
+    """Uma conta vista pelo painel.
+
+    Apenas metadados. O conteudo dos documentos nunca aparece aqui: o produto
+    processa codigo-fonte de terceiros, e um painel que abre a documentacao de
+    um cliente torna verdadeira a frase "a equipe le o codigo dos clientes",
+    que passaria a ser obrigatoria na politica de privacidade.
+    """
+
+    id: uuid.UUID
+    email: str
+    display_name: str | None
+    plan_tier: str
+    is_active: bool
+    is_admin: bool
+    created_at: datetime
+
+    jobs_this_month: int
+    spent_this_month_usd: float
+    cost_limit_usd: float = Field(description="Teto do plano, para comparar com o gasto.")
+    documents_total: int
+    last_job_at: datetime | None
+
+    locked_until: datetime | None = Field(
+        default=None, description="Preenchido enquanto o bloqueio por tentativas estiver ativo."
+    )
+
+
+class AdminAccountList(BaseModel):
+    items: list[AdminAccountResponse]
+    total: int
+
+
+class AdminPlanChangeRequest(BaseModel):
+    plan: str
+    reason: str = Field(
+        min_length=5,
+        max_length=500,
+        description="Por que esta mudando. Uma troca sem motivo escrito e a que "
+        "ninguem consegue explicar tres meses depois.",
+    )
+
+
+class AdminStatusChangeRequest(BaseModel):
+    is_active: bool
+    reason: str = Field(min_length=5, max_length=500)
+
+
+class AdminActionResponse(BaseModel):
+    id: uuid.UUID
+    actor_email: str
+    target_email: str
+    action: str
+    value_before: str | None
+    value_after: str | None
+    reason: str
+    created_at: datetime
