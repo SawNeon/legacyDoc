@@ -293,3 +293,19 @@ async def test_the_audit_is_only_visible_to_admins(client: AsyncClient, session)
 
     assert (await client.get("/v1/admin/audit", headers=headers)).status_code == 200
     assert (await client.get("/v1/admin/audit", headers=comum_headers)).status_code == 404
+
+
+async def test_me_says_whether_the_account_opens_the_panel(client: AsyncClient, session):
+    """O front decide por aqui se mostra o acesso.
+
+    Esconder o link nao e controle de acesso: o painel recusa por conta propria
+    quem nao for administrador. Isto existe para nao oferecer uma porta que a
+    pessoa vai bater e receber 404.
+    """
+    headers, email = await _register(client)
+
+    assert (await client.get("/v1/auth/me", headers=headers)).json()["is_admin"] is False
+
+    await _promote(session, email)
+
+    assert (await client.get("/v1/auth/me", headers=headers)).json()["is_admin"] is True

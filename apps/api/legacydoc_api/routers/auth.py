@@ -148,6 +148,7 @@ async def me(
         plan=_plan_info(principal.user.plan_tier),
         jobs_used_this_month=used,
         spent_this_month_usd=round(spent, 4),
+        is_admin=principal.user.is_admin,
     )
 
 

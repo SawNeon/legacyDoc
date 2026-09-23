@@ -60,6 +60,13 @@ class UserResponse(BaseModel):
     spent_this_month_usd: float
     """Real LLM spend this month, used by the front to show remaining budget."""
 
+    is_admin: bool = Field(
+        default=False,
+        description="Se esta conta abre o painel. O front usa isto para decidir se "
+        "mostra o acesso; esconder um link nao e controle de acesso, e o painel "
+        "recusa por conta propria quem nao for administrador.",
+    )
+
 
 class ApiKeyCreateRequest(BaseModel):
     name: str = Field(min_length=1, max_length=120)
