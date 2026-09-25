@@ -357,3 +357,34 @@ async def test_a_downgrade_while_queued_is_honoured(session, pro_user, settings,
 
     document = (await session.execute(select(Document))).scalar_one()
     assert document.depth == "basic"
+
+
+async def test_a_retried_job_resumes_instead_of_documenting_again(
+    session, pro_user, settings, fake_router
+):
+    """A job returns to the queue after a transient failure, and the files it
+    already documented were committed one by one.
+
+    Without resuming, the second attempt tried to insert a document for the same
+    (job, path), hit the unique constraint, and failed for good with half the
+    work stored, having paid for every file twice.
+    """
+    await _queue_snippet_job(session, pro_user)
+
+    claimed = await claim_job(session, worker_id="w1", lease_seconds=300)
+    await session.commit()
+
+    processor = JobProcessor(settings)
+
+    first = await processor.process(session, claimed, worker_id="w1")
+    assert fake_router.calls, "the first attempt does the real work"
+
+    second = await processor.process(session, claimed, worker_id="w1")
+
+    assert first.documents_created == 1
+    assert second.documents_created == 1, "the resumed run still reports the whole job"
+    # Each process() builds its own router, so this list belongs to the second run.
+    assert fake_router.calls == [], "no second charge for the same file"
+
+    documents = (await session.execute(select(Document))).scalars().all()
+    assert len(documents) == 1

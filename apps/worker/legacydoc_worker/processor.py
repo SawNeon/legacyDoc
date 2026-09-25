@@ -273,10 +273,19 @@ class JobProcessor:
         created = 0
         warnings: list[str] = []
 
+        # A retry starts the job over, but files documented before the failure
+        # were already committed. Skipping them saves the tokens and avoids
+        # colliding with the unique (job, path) constraint.
+        already_documented = await self._documented_paths(session, job)
+
         for index, repo_file in enumerate(files, start=1):
             language = detect_language(repo_file.path)
 
             if language is None:
+                continue
+
+            if repo_file.path in already_documented:
+                created += 1
                 continue
 
             percent = 15 + int((index - 1) / max(total, 1) * 80)
@@ -322,6 +331,11 @@ class JobProcessor:
             await session.commit()
 
         return JobOutcome(documents_created=created, warnings=warnings)
+
+    async def _documented_paths(self, session: AsyncSession, job: Job) -> set[str]:
+        rows = await session.execute(select(Document.path).where(Document.job_id == job.id))
+
+        return set(rows.scalars())
 
     def _persist(
         self,
