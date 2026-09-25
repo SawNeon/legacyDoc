@@ -1,9 +1,8 @@
 # Como o Legacy Doc funciona, fluxo a fluxo
 
 Mapa para entender o código de ponta a ponta. Cada fluxo mostra **o caminho**, **o
-arquivo e a linha** onde acontece e **por que foi feito assim**. As linhas valem para
-o commit em que este arquivo foi escrito; se um número estiver deslocado, o nome da
-função continua sendo a referência.
+arquivo e a função** onde acontece e **por que foi feito assim**. Não há números de
+linha de propósito: eles envelhecem a cada edição, e o nome da função não.
 
 Para o contrato de cada endpoint, veja [`api-contract.md`](api-contract.md). Para a
 extensão do VS Code, [`guia-extensao.md`](guia-extensao.md). Para publicar,
@@ -53,7 +52,7 @@ Três decisões explicam quase tudo:
 | `tests` | 255 testes | tudo |
 
 Regra de dependência: **`core` não importa ninguém**, e nenhum módulo de domínio
-importa FastAPI (`packages/core/legacydoc_core/errors.py:3`). Por isso os erros de
+importa FastAPI (`packages/core/legacydoc_core/errors.py`). Por isso os erros de
 domínio são traduzidos para HTTP num lugar só (fluxo 1.3).
 
 ### Como subir
@@ -79,16 +78,16 @@ de "a análise não funciona" em desenvolvimento.
 requisição ─> CORS ─> rate limit ─> roteamento ─> dependências (auth/cotas) ─> rota
 ```
 
-- `create_app` (`main.py:29`) monta tudo; `lifespan` (`:33`) abre o pool de conexões
+- `create_app` (`main.py`) monta tudo; `lifespan` abre o pool de conexões
   e o fecha ao desligar.
-- O rate limit é registrado **antes** do CORS (`:57-58`) porque o Starlette executa o
+- O rate limit é registrado **antes** do CORS porque o Starlette executa o
   último registrado primeiro. Assim o CORS fica por fora e uma resposta 429 ainda
   leva os cabeçalhos que o navegador exige para mostrá-la.
-- `/health` (`:74`) não passa por autenticação nem por rate limit.
+- `/health` não passa por autenticação nem por rate limit.
 
 ### 1.2 Rate limit (`apps/api/legacydoc_api/ratelimit.py`, `packages/core/legacydoc_core/ratelimit.py`)
 
-Janela deslizante **por IP**, em memória do processo. Três faixas (`ratelimit.py:20-39`):
+Janela deslizante **por IP**, em memória do processo. Três faixas (`ratelimit.py`):
 
 | Faixa | Limite | Rotas |
 | :--- | :--- | :--- |
@@ -99,17 +98,17 @@ Janela deslizante **por IP**, em memória do processo. Três faixas (`ratelimit.
 Por que 20 em `auth` e não menos: o bloqueio da conta (fluxo 2.1) já barra o palpite
 de senha, e apertar mais o IP prejudica turma ou escritório que sai por um único IP.
 
-`_client_address` (`:109`) só confia em `X-Forwarded-For` quando
+`_client_address` só confia em `X-Forwarded-For` quando
 `TRUST_PROXY_HEADERS=true`, e usa a **última** entrada (a que o proxy anexou). Sem
 essa regra qualquer cliente forjaria um IP novo a cada pedido. Atrás da Cloudflare
 isso depende do `infra/nginx-cloudflare-realip.conf`, que só aceita
 `CF-Connecting-IP` vindo dos IPs da própria Cloudflare.
 
-### 1.3 Erros num formato único (`main.py:81-126`)
+### 1.3 Erros num formato único (`main.py`)
 
 Toda falha responde `{"error", "message", "details"}`. `LegacyDocError` mapeia para
 o `http_status` da própria exceção (`errors.py`): 401, 402, 404, 409, 422, 429, 502.
-Erro inesperado vira 500 sem vazar detalhes em produção (`main.py:117-121`).
+Erro inesperado vira 500 sem vazar detalhes em produção (`main.py`).
 
 ---
 
@@ -117,46 +116,46 @@ Erro inesperado vira 500 sem vazar detalhes em produção (`main.py:117-121`).
 
 ### 2.1 Cadastro e login (`routers/auth.py`)
 
-**Cadastro** (`:61`): normaliza o e-mail, valida a força da senha, grava com
-**argon2id** (`security.py:32`), plano `free`. E-mail repetido dá 409.
+**Cadastro**: normaliza o e-mail, valida a força da senha, grava com
+**argon2id** (`security.py`), plano `free`. E-mail repetido dá 409.
 
-**Login** (`:87`), em ordem:
+**Login**, em ordem:
 
 1. E-mail desconhecido → "Credenciais inválidas." Mesma resposta de senha errada,
    para não virar um detector de contas existentes.
 2. Conta bloqueada → recusa **antes** de verificar a senha. Se verificasse depois, o
    atacante continuaria testando candidatas.
 3. Senha errada → soma tentativa; da 5ª em diante bloqueia com espera crescente:
-   15 min, 30, 60… até 24 h (`security.py:158-171`). Não bloqueia para sempre, senão
+   15 min, 30, 60… até 24 h (`security.py`). Não bloqueia para sempre, senão
    o atacante negaria o acesso à vítima.
-4. **O `commit` vem antes do `raise`** (`auth.py:113-116`). A sessão faz rollback
+4. **O `commit` vem antes do `raise`** (`auth.py`). A sessão faz rollback
    quando há exceção; sem o commit explícito o contador nunca persistiria e o
    bloqueio jamais dispararia. Já foi um bug real.
-5. Sucesso → zera o contador e devolve um JWT de 24 h (`_token_for`, `:331`).
+5. Sucesso → zera o contador e devolve um JWT de 24 h (`_token_for`, ).
 
 ### 2.2 Duas credenciais no mesmo cabeçalho (`deps.py`)
 
-`Authorization: Bearer <x>`. `get_principal` (`:64`) decide pelo prefixo:
+`Authorization: Bearer <x>`. `get_principal` decide pelo prefixo:
 
 | Prefixo | Tipo | Como valida | Uso |
 | :--- | :--- | :--- | :--- |
-| `ldk_` | Chave de API | Busca pelo prefixo indexado, confirma o SHA-256 em tempo constante (`:106`) | Extensão, CI |
-| outro | JWT | Decodifica e assina (`:90`) | Front web |
+| `ldk_` | Chave de API | Busca pelo prefixo indexado, confirma o SHA-256 em tempo constante | Extensão, CI |
+| outro | JWT | Decodifica e assina | Front web |
 
-Chave de API usa SHA-256 e não argon2 (`security.py:130`): ela tem 256 bits de
+Chave de API usa SHA-256 e não argon2 (`security.py`): ela tem 256 bits de
 entropia, então não há senha humana para forçar, e argon2 somaria ~100 ms a cada
 chamada da extensão.
 
-O resultado é um `Principal` (`deps.py:40`): usuário + plano + se veio por chave.
-Conta desativada é recusada aqui (`:80`), para todas as rotas de uma vez.
+O resultado é um `Principal` (`deps.py`): usuário + plano + se veio por chave.
+Conta desativada é recusada aqui, para todas as rotas de uma vez.
 
-### 2.3 Chaves de API (`auth.py:259-330`)
+### 2.3 Chaves de API (`auth.py`)
 
 `POST /v1/auth/api-keys` gera `ldk_` + 32 bytes aleatórios, **grava só o hash** e
 devolve o valor uma única vez. `DELETE` revoga (marca `revoked_at`). A `last_used_at`
-é atualizada a cada uso (`deps.py:119`).
+é atualizada a cada uso (`deps.py`).
 
-### 2.4 Painel administrativo (`routers/admin.py`, `deps.py:131`)
+### 2.4 Painel administrativo (`routers/admin.py`, `deps.py`)
 
 `require_admin` **recusa chave de API** e responde **404, não 403**:
 
@@ -170,7 +169,7 @@ conta for apagada; FK `SET NULL`). É o que responde, meses depois, "por que ess
 conta está no Pro?".
 
 O mesmo padrão "404 em vez de 403" vale para dono de recurso: projeto, job e
-documento de outra conta respondem 404 (`deps.py:260`, `jobs.py:271`).
+documento de outra conta respondem 404 (`deps.py`, `jobs.py`).
 
 ---
 
@@ -190,14 +189,14 @@ documento de outra conta respondem 404 (`deps.py:260`, `jobs.py:271`).
 | Webhook | não | sim | sim |
 | Prioridade na fila | 100 | 50 | 10 (menor vai primeiro) |
 
-Os planos são constantes no código (`_FREE :126`, `_PRO :139`, `_TEAM :159`); o plano
+Os planos são constantes no código (`_FREE`, `_PRO`, `_TEAM`); o plano
 de cada conta é só o texto `plan_tier` na tabela `users`. Mudar de plano é trocar
 esse texto, e o **painel admin** faz exatamente isso. Ainda **não há pagamento**.
 
-**O limite é em dólares, não em jobs** (`plans.py:96-101`): um arquivo e quinhentos
+**O limite é em dólares, não em jobs** (`plans.py`): um arquivo e quinhentos
 diferem em ordens de grandeza, e a conta a pagar é em dólar.
 
-### 3.2 Profundidade escolhida por job (`GenerationDepth`, `plans.py:19`)
+### 3.2 Profundidade escolhida por job (`GenerationDepth`, `plans.py`)
 
 | `depth` | Agentes que rodam | Custo medido por arquivo |
 | :--- | :--- | ---: |
@@ -206,29 +205,29 @@ diferem em ordens de grandeza, e a conta a pagar é em dólar.
 | `pro` | + auditoria (verifier) e reescrita | ~US$ 0,023 |
 
 O plano diz até onde a pessoa **pode** ir; o `depth` diz até onde ela **escolheu**
-ir. `resolve_depth` (`:196`) **limita em vez de recusar**: pedir `pro` no Free roda
+ir. `resolve_depth` **limita em vez de recusar**: pedir `pro` no Free roda
 `basic` e a resposta informa o que foi aplicado. Assim um cliente que sempre manda
 `pro` funciona em qualquer plano.
 
-O worker **chama `resolve_depth` de novo** (`processor.py:78`) em vez de confiar no
+O worker **chama `resolve_depth` de novo** (`processor.py`) em vez de confiar no
 que foi gravado na criação: o job pode ficar na fila enquanto a conta muda de plano,
 e vale o plano do momento da execução. Há teste para isso
 (`test_a_downgrade_while_queued_is_honoured`).
 
-### 3.3 Onde os limites são checados (`deps.py:192-257`)
+### 3.3 Onde os limites são checados (`deps.py`)
 
 Antes de enfileirar, nesta ordem:
 
-1. `enforce_cost_budget` (`:192`): teto **global** do mês (`GLOBAL_MONTHLY_BUDGET_USD`,
+1. `enforce_cost_budget`: teto **global** do mês (`GLOBAL_MONTHLY_BUDGET_USD`,
    padrão US$ 50) e teto do **usuário**. O global é a última defesa do cartão: várias
    contas cada uma dentro do seu limite ainda podem somar mais do que se pode pagar.
-2. `enforce_job_quota` (`:235`): cota mensal de jobs e concorrência.
+2. `enforce_job_quota`: cota mensal de jobs e concorrência.
 
 O gasto é somado de `usage_records`, que o worker preenche a cada chamada de IA.
 É um **freio, não uma cerca exata**: um job já aceito termina e pode ultrapassar o
 teto pelo custo dele.
 
-### 3.4 Melhorias sempre gravadas, exibição por plano (`documents.py:87-101`)
+### 3.4 Melhorias sempre gravadas, exibição por plano (`documents.py`)
 
 O improver roda conforme a **profundidade**; ver o resultado depende do **plano**
 (`Feature.IMPROVEMENT_FINDINGS`). São permissões separadas de propósito: o que já
@@ -245,15 +244,15 @@ Ver a limitação 13 sobre o que isso significa para a vitrine do plano Pro.
 
 ## 4. Criar um job (três entradas)
 
-Todas terminam em `enqueue` (`queue.py:38`) e respondem **202** com o job em `queued`.
+Todas terminam em `enqueue` (`queue.py`) e respondem **202** com o job em `queued`.
 
-### 4.1 Link de repositório: `POST /v1/jobs` (`routers/jobs.py:50`)
+### 4.1 Link de repositório: `POST /v1/jobs` (`routers/jobs.py`)
 
 1. `enforce_cost_budget` e `enforce_job_quota`.
 2. Projeto informado precisa ser do chamador (`get_owned_project`).
 3. Webhook exige plano com `WEBHOOKS`.
 4. `resolve_depth`.
-5. `validate_repo_url` (`repository.py:85`): **só HTTPS**, só `github.com`,
+5. `validate_repo_url` (`repository.py`): **só HTTPS**, só `github.com`,
    `gitlab.com`, `bitbucket.org`, sem `@` na URL. Isso barra `file://`, `git://`, SSH
    e qualquer host interno: uma URL controlada pelo cliente não pode ler o disco nem
    alcançar a rede interna do servidor.
@@ -266,17 +265,17 @@ Todas terminam em `enqueue` (`queue.py:38`) e respondem **202** com o job em `qu
 linguagem** (`detect_language`), por isso extensão desconhecida dá 422. Conteúdo até
 1 MB (`schemas.py`, `SnippetJobRequest`).
 
-### 4.3 Envio do computador: `POST /v1/jobs/upload` (`jobs.py:116`)
+### 4.3 Envio do computador: `POST /v1/jobs/upload` (`jobs.py`)
 
 Multipart com `file`, `project_id`, `output_language`, `depth`.
 
 1. Mesmas checagens de cota e custo.
 2. Nome precisa terminar em `.zip`.
-3. **Grava em disco lendo em blocos de 1 MB**, contando os bytes (`:156-167`). O
+3. **Grava em disco lendo em blocos de 1 MB**, contando os bytes. O
    `Content-Length` vem do cliente e não é limite; ao cruzar 50 MB aborta na hora.
 4. Vazio → 422. **A assinatura decide, não o `Content-Type`**: `looks_like_zip`
-   (`archive.py:45`) confere os bytes `PK`.
-5. Se qualquer passo falha, o arquivo parcial é apagado (`:175-177`).
+   (`archive.py`) confere os bytes `PK`.
+5. Se qualquer passo falha, o arquivo parcial é apagado.
 6. O job guarda **só o caminho** do zip. **A extração acontece no worker**, porque
    fazê-la aqui devolveria à API o trabalho pesado que a v2 existe para tirar dela.
 
@@ -287,7 +286,7 @@ aplicação de propósito: o cliente recebe o 422 legível da API, e não um 413
 
 ## 5. A fila e o worker
 
-### 5.1 Pegar um job (`queue.py:65`, SQL em `:79-98`)
+### 5.1 Pegar um job (`queue.py`, SQL em )
 
 ```sql
 UPDATE jobs SET status='running', locked_by=..., lease_expires_at=..., attempts=attempts+1
@@ -299,41 +298,40 @@ RETURNING id
 
 `SKIP LOCKED` faz um worker pular o job que outro já está pegando, então N workers
 rodam sem coordenação e sem pegar o mesmo job. Ordena por `priority` (planos pagos
-primeiro) e depois por `scheduled_at` (FIFO dentro da faixa). O ramo SQLite
-(`:116-144`) existe só para os testes rodarem sem container.
+primeiro) e depois por `scheduled_at` (FIFO dentro da faixa). O ramo SQLite existe só para os testes rodarem sem container.
 
 ### 5.2 O laço (`apps/worker/legacydoc_worker/runner.py`)
 
-- `run` (`:39`) cria `WORKER_CONCURRENCY` **slots** (padrão 4) mais um **reaper**.
-- `_slot` (`:61`): pega job → executa → repete. Fila vazia: espera
+- `run` cria `WORKER_CONCURRENCY` **slots** (padrão 4) mais um **reaper**.
+- `_slot`: pega job → executa → repete. Fila vazia: espera
   `WORKER_POLL_INTERVAL_SECONDS` (2 s), mas acorda na hora se pedirem para desligar.
-- `_execute` (`:99`) separa os erros em dois tipos, e isso é central:
+- `_execute` separa os erros em dois tipos, e isso é central:
 
 | Erro | Tratamento |
 | :--- | :--- |
-| `LegacyDocError` (extensão inválida, repositório inexistente, zip ruim) | **Falha definitiva**, sem nova tentativa: repetir não melhora (`:108-120`) |
-| Qualquer outra exceção (rede, banco, provedor caiu) | **Reenfileira** com espera de 30 s dobrando até 15 min, até 3 tentativas (`queue.py:201-238`) |
-| Concluiu sem gerar nenhum documento | Falha `no_documents` (`:139-149`) |
+| `LegacyDocError` (extensão inválida, repositório inexistente, zip ruim) | **Falha definitiva**, sem nova tentativa: repetir não melhora |
+| Qualquer outra exceção (rede, banco, provedor caiu) | **Reenfileira** com espera de 30 s dobrando até 15 min, até 3 tentativas (`queue.py`) |
+| Concluiu sem gerar nenhum documento | Falha `no_documents` |
 
 ### 5.3 Lease e heartbeat: como um worker que morre não perde o job
 
 Pegar um job dá um **lease** de 900 s (`JOB_LEASE_SECONDS`). A cada arquivo o worker
-chama `heartbeat` (`queue.py:147`), que renova o lease **e** publica progresso.
-Se o processo morre, o lease vence; o **reaper** (`runner.py:162`, a cada 60 s)
-reenfileira o job (`queue.py:241`), ou o marca `failed` se as tentativas acabaram.
+chama `heartbeat` (`queue.py`), que renova o lease **e** publica progresso.
+Se o processo morre, o lease vence; o **reaper** (`runner.py`, a cada 60 s)
+reenfileira o job (`queue.py`), ou o marca `failed` se as tentativas acabaram.
 
-`heartbeat` devolve `False` quando o job já não pertence a este worker (`:168-177`).
-O processador então **para** (`processor.py:303-305`): continuar duplicaria documentos
+`heartbeat` devolve `False` quando o job já não pertence a este worker.
+O processador então **para** (`processor.py`): continuar duplicaria documentos
 e cobraria token duas vezes.
 
-Desligamento gracioso (`runner.py:192`): SIGTERM/SIGINT param de pegar jobs e deixam o
+Desligamento gracioso (`runner.py`): SIGTERM/SIGINT param de pegar jobs e deixam o
 atual terminar. Sem isso, um deploy mataria jobs no meio e gastaria token de novo.
 
 ### 5.4 Retomada depois de falha
 
-O worker **grava cada arquivo assim que o termina** (`processor.py:331`), para uma falha
+O worker **grava cada arquivo assim que o termina** (`processor.py`), para uma falha
 tardia não jogar fora o que já foi pago. Quando o job volta à fila, a nova tentativa
-consulta os documentos que o job já tem (`_documented_paths`, `processor.py:335`) e
+consulta os documentos que o job já tem (`_documented_paths`, `processor.py`) e
 **pula esses arquivos**, sem chamar a IA. Antes disso, a segunda tentativa batia na
 restrição única `(job_id, path)` e o job terminava como `failed` com metade do
 trabalho gravado. Teste: `test_a_retried_job_resumes_instead_of_documenting_again`.
@@ -342,7 +340,7 @@ trabalho gravado. Teste: `test_a_retried_job_resumes_instead_of_documenting_agai
 
 ## 6. Executar um job (`apps/worker/legacydoc_worker/processor.py`)
 
-`process` (`:55`) monta o roteador de provedores, resolve a profundidade e o pipeline,
+`process` monta o roteador de provedores, resolve a profundidade e o pipeline,
 e despacha por tipo:
 
 ```
@@ -351,16 +349,16 @@ process ──┬─ document_snippet ──> 1 arquivo em memória ────
           └─ document_repository ─> clona ────────> varre ──────────┘
 ```
 
-### 6.1 Repositório (`_document_repository`, `:200`)
+### 6.1 Repositório (`_document_repository`, )
 
-1. `clone` (`repository.py:140`): `--depth=1 --single-branch --no-tags`, com timeout.
-2. `scan` (`:173`): percorre podando pastas de dependência e ocultas, descartando
+1. `clone` (`repository.py`): `--depth=1 --single-branch --no-tags`, com timeout.
+2. `scan`: percorre podando pastas de dependência e ocultas, descartando
    extensões sem gramática, arquivos minificados, arquivos acima de 512 KB, binários e
    vazios; respeita limites de arquivos e bytes.
 3. Corta em `plan.max_files_per_job` **mesmo sem `paths`** e avisa quantos ficaram fora.
 4. `finally: cleanup_directory` **sempre**: a v1 deixava um clone órfão de 101 MB.
 
-### 6.2 Zip (`_document_archive`, `:118`, `safe_extract` em `archive.py:101`)
+### 6.2 Zip (`_document_archive`, , `safe_extract` em `archive.py`)
 
 Cada entrada passa por, em ordem: link simbólico → caminho perigoso (absoluto, letra
 de drive, `..`, byte nulo) → tamanho → **razão de compressão** (> 500x) → extensão
@@ -370,14 +368,14 @@ Filtrar por extensão **durante** a extração impede que um zip cheio de imagen
 o disco.
 
 Entrada recusada por segurança **não derruba o job**: vira aviso no resultado.
-`finally` apaga a pasta extraída **e o zip enviado** (`:174-178`): o zip só serve a
+`finally` apaga a pasta extraída **e o zip enviado**: o zip só serve a
 este job, e guardá-lo acumularia disco e deixaria código de cliente parado no servidor.
 
-### 6.3 Todos os arquivos (`_document_files`, `:250`)
+### 6.3 Todos os arquivos (`_document_files`, )
 
 1. Carrega o **contexto do projeto** (glossário, regras), se houver.
 2. Monta o **índice de símbolos** de todos os arquivos em thread (`_build_index`,
-   `:378`): custa CPU e zero token, e deixa o escritor entender chamadas para outros
+   ): custa CPU e zero token, e deixa o escritor entender chamadas para outros
    arquivos em vez de chutar.
 3. Para cada arquivo: `heartbeat` (progresso 15%→95%) → `pipeline.run` → alimenta o
    índice com os resumos gerados (arquivos seguintes enxergam o que já foi
@@ -386,7 +384,7 @@ este job, e guardá-lo acumularia disco e deixaria código de cliente parado no 
 
 ### 6.4 Custos registrados
 
-`_make_usage_sink` (`:425`) grava um `UsageRecord` por chamada de IA (agente,
+`_make_usage_sink` grava um `UsageRecord` por chamada de IA (agente,
 provedor, modelo, tokens, US$, latência, sucesso). É a base do teto de gasto, do painel
 e de `docs/custos.md`.
 
@@ -394,7 +392,7 @@ e de `docs/custos.md`.
 
 ## 7. O pipeline de agentes (`packages/agents/legacydoc_agents/pipeline.py`)
 
-`DocumentationPipeline.run` (`:93`), **por arquivo**:
+`DocumentationPipeline.run`, **por arquivo**:
 
 ```
 parse (tree-sitter) ─> chunks ─> LEITOR ─> ESCRITOR ║ MELHORIAS ─> AUDITOR ⇄ reescrita ─> RESUMO
@@ -402,33 +400,33 @@ parse (tree-sitter) ─> chunks ─> LEITOR ─> ESCRITOR ║ MELHORIAS ─> AUD
                                                      paralelos por bloco
 ```
 
-1. **Parse** (`symbols.py:156`): símbolos, linhas, complexidade ciclomática e classe-mãe
+1. **Parse** (`symbols.py`): símbolos, linhas, complexidade ciclomática e classe-mãe
    vêm da árvore sintática. Sem gramática, divide por linhas e avisa.
-2. **Blocos** (`chunking.py:46`): agrupa símbolos até ~6.000 tokens; um símbolo maior
+2. **Blocos** (`chunking.py`): agrupa símbolos até ~6.000 tokens; um símbolo maior
    que o orçamento é fatiado.
-3. **Leitor** (`:167`): diagnóstico rápido do que falta de contexto. Roda em todos os
+3. **Leitor**: diagnóstico rápido do que falta de contexto. Roda em todos os
    níveis e a falha dele não derruba nada (é consultivo).
-4. **Escritor + Melhorias** (`_process_chunks`, `:194`): por bloco, em paralelo, com
+4. **Escritor + Melhorias** (`_process_chunks`, ): por bloco, em paralelo, com
    semáforo (`CHUNK_CONCURRENCY`, padrão 6). O bloco que falha vira aviso, **não
    afunda o arquivo**.
-5. **Ancoragem** (`_enrich :513`, `_anchor_findings :462`): **a defesa contra
+5. **Ancoragem** (`_enrich`, `_anchor_findings`): **a defesa contra
    alucinação.** O símbolo é aceito só se o parser o viu; linha, complexidade e classe
    vêm do parser. O nome citado pelo modelo é normalizado (`Classe.metodo`).
    Símbolo ou melhoria sobre algo que **não existe no código é descartado** e listado
    nos avisos. Melhoria sobre o arquivo todo é mantida, mas **sem linha**, porque nada
    a confirma. Motivo: uma melhoria que manda o leitor para a linha errada é pior que
    nenhuma, porque ele confia nela e depois desconfia do resto.
-6. **Auditor** (`_review_loop`, `:309`, só `pro`): compara a documentação com o código.
+6. **Auditor** (`_review_loop`, , só `pro`): compara a documentação com o código.
    O código vai como **prefixo cacheável** (`cacheable_prefix`), pago com desconto a
-   partir da 2ª rodada. Reprovou? `_rewrite_rejected` (`:363`) reescreve **só os
+   partir da 2ª rodada. Reprovou? `_rewrite_rejected` reescreve **só os
    símbolos reprovados**, e não o arquivo inteiro, para não gastar token nem degradar
    o que estava certo. Uma rodada de reescrita (`max_review_rounds=1`); o que
    sobreviver vira aviso.
-7. **Resumo** (`_run_summarizer`, `:418`).
+7. **Resumo** (`_run_summarizer`, ).
 
 ### 7.1 Roteamento por agente (`packages/providers/legacydoc_providers/router.py`)
 
-`DEFAULT_ROUTES` (`:68`): barato no volume, forte na auditoria.
+`DEFAULT_ROUTES`: barato no volume, forte na auditoria.
 
 | Agente | 1ª opção | Reserva |
 | :--- | :--- | :--- |
@@ -437,8 +435,8 @@ parse (tree-sitter) ─> chunks ─> LEITOR ─> ESCRITOR ║ MELHORIAS ─> AUD
 | Melhorias | claude-sonnet-5 | gpt-4o |
 | Auditor | claude-opus-5 | gpt-4o |
 
-`resolve_chain` (`:202`) **filtra pelos provedores que têm chave**. Hoje só há
-`OPENAI_API_KEY`, então melhorias e auditoria rodam em `gpt-4o`. `complete` (`:225`)
+`resolve_chain` **filtra pelos provedores que têm chave**. Hoje só há
+`OPENAI_API_KEY`, então melhorias e auditoria rodam em `gpt-4o`. `complete`
 tenta a cadeia em ordem, e cada falha (inclusive rate limit) passa para o próximo;
 só quando todos falham levanta `ProviderError` (502).
 
@@ -446,9 +444,9 @@ só quando todos falham levanta `ProviderError` (502).
 
 ## 8. Ler o resultado
 
-`GET /v1/jobs/{id}` (`jobs.py:232`) devolve status, `progress_percent`,
+`GET /v1/jobs/{id}` (`jobs.py`) devolve status, `progress_percent`,
 `progress_message` (mensagem real, tipo "Documentando src/a.py (3/12)"), `depth` e
-`source`. `_source_of` (`:314`) expõe só a origem legível e **não** os parâmetros
+`source`. `_source_of` expõe só a origem legível e **não** os parâmetros
 inteiros: eles trazem o conteúdo enviado e o caminho do arquivo no disco do servidor.
 
 `GET /v1/documents?job_id=` lista; `GET /v1/documents/{id}` traz símbolos e melhorias
@@ -472,10 +470,9 @@ Loading ── runRepositoryJob ou followJob(pendingJobId) ──> polling GET /
 Resultado ── lê legacyDocResult; abre cada arquivo com getDocument; exporta
 ```
 
-- `services/api.ts`: cliente da v2. `followJob` (`:417`) acompanha um job existente;
-  `runRepositoryJob` (`:442`) cria e acompanha; `createUploadJob` (`:482`) envia o zip
-  por XHR porque `fetch` não informa progresso de **envio**; `documentToResult`
-  (`:386`) converte o formato da API no que as telas usam.
+- `services/api.ts`: cliente da v2. `followJob` acompanha um job existente;
+  `runRepositoryJob` cria e acompanha; `createUploadJob` envia o zip
+  por XHR porque `fetch` não informa progresso de **envio**; `documentToResult` converte o formato da API no que as telas usam.
 - `services/upload.ts`: prepara a pasta. **Filtra no navegador com as regras do
   servidor** (pastas de dependência, extensões de `GET /v1/meta/languages`, arquivos
   grandes ou gerados) e compacta com `fflate`. Uma pasta de projeto costuma ter
@@ -486,9 +483,9 @@ Resultado ── lê legacyDocResult; abre cada arquivo com getDocument; exporta
 
 ### 9.2 Histórico por conta
 
-`clearLocalSession` (`api.ts:307`) apaga resultado, histórico e chaves de estado ao
+`clearLocalSession` (`api.ts`) apaga resultado, histórico e chaves de estado ao
 entrar e ao sair. Já houve vazamento de histórico entre contas porque tudo ficava em
-`localStorage` sem dono; hoje o histórico vem do servidor (`listJobs`, `:302`),
+`localStorage` sem dono; hoje o histórico vem do servidor (`listJobs`, ),
 escopado à conta.
 
 ### 9.3 Visual por plano
@@ -497,7 +494,7 @@ Azul é o padrão. Roxo aparece **só** no modo `pro` (`data-modo="pro"`), que p
 **redeclarar os tokens semânticos**: uma variável CSS resolve o `var()` no elemento
 onde é declarada, então trocar só a paleta base não muda `--primary` nos filhos.
 `Resultado` mostra as melhorias reais e, quando `findings_locked`, o cartão com
-cadeado (`Resultado.tsx:188`, `:544`).
+cadeado (`Resultado.tsx`, ).
 
 ---
 
@@ -505,16 +502,16 @@ cadeado (`Resultado.tsx:188`, `:544`).
 
 | Ameaça | Defesa | Onde |
 | :--- | :--- | :--- |
-| Palpite de senha | argon2id + bloqueio crescente + rate limit | `security.py:32,158`; `ratelimit.py:20` |
-| Descobrir quais e-mails existem | Mesma resposta para e-mail e senha errados | `auth.py:96-98` |
-| Ver dado de outra conta | 404 para recurso alheio, filtro por dono em toda consulta | `deps.py:260`, `jobs.py:271`, `documents.py:43` |
-| Chave de API vazada abrir o painel | Painel só aceita sessão | `deps.py:142` |
-| Ler o disco ou a rede pelo clone | HTTPS + lista de hosts + sem credencial na URL | `repository.py:85` |
-| Zip slip, bomba, symlink | Validação por entrada, tetos por byte, razão de compressão | `archive.py:101` |
-| Upload maior que o limite | Contagem em blocos, aborto na hora, nginx acima | `jobs.py:156` |
-| Estourar a conta da IA | Teto por usuário + teto global | `deps.py:192` |
+| Palpite de senha | argon2id + bloqueio crescente + rate limit | `security.py`; `ratelimit.py` |
+| Descobrir quais e-mails existem | Mesma resposta para e-mail e senha errados | `auth.py` |
+| Ver dado de outra conta | 404 para recurso alheio, filtro por dono em toda consulta | `deps.py`, `jobs.py`, `documents.py` |
+| Chave de API vazada abrir o painel | Painel só aceita sessão | `deps.py` |
+| Ler o disco ou a rede pelo clone | HTTPS + lista de hosts + sem credencial na URL | `repository.py` |
+| Zip slip, bomba, symlink | Validação por entrada, tetos por byte, razão de compressão | `archive.py` |
+| Upload maior que o limite | Contagem em blocos, aborto na hora, nginx acima | `jobs.py` |
+| Estourar a conta da IA | Teto por usuário + teto global | `deps.py` |
 | Inundação de requisições | Limite na app + nginx; IP real atrás da Cloudflare | `ratelimit.py`, `infra/` |
-| Documentação inventada | Parser é a verdade; o que ele não vê é descartado | `pipeline.py:462,513` |
+| Documentação inventada | Parser é a verdade; o que ele não vê é descartado | `pipeline.py` |
 | Chave de IA no código | Só variável de ambiente, `SecretStr` | `settings.py` |
 
 ---
@@ -526,11 +523,11 @@ decisão antes de abrir para o público.
 
 | # | Limitação | Impacto | Sugestão |
 | :-: | :--- | :--- | :--- |
-| 1 | **Cancelar só funciona em job `queued`.** `cancel_job` (`queue.py:297`) exige `queued`; o comentário fala em "perceber no heartbeat", mas o heartbeat nunca cancela. | Job em execução não para e gasta até o fim | Checar `cancelled` no `heartbeat` e abortar, ou corrigir o texto |
-| 2 | **Nova tentativa de job de upload falha.** O zip é apagado no `finally` do 1º ciclo (`processor.py:174-178`), então a 2ª tentativa acusa "arquivo não está mais disponível". | Erro transitório num upload vira falha definitiva com mensagem clara | Apagar o zip só quando o job termina (sucesso ou falha final) |
+| 1 | **Cancelar só funciona em job `queued`.** `cancel_job` (`queue.py`) exige `queued`; o comentário fala em "perceber no heartbeat", mas o heartbeat nunca cancela. | Job em execução não para e gasta até o fim | Checar `cancelled` no `heartbeat` e abortar, ou corrigir o texto |
+| 2 | **Nova tentativa de job de upload falha.** O zip é apagado no `finally` do 1º ciclo (`processor.py`), então a 2ª tentativa acusa "arquivo não está mais disponível". | Erro transitório num upload vira falha definitiva com mensagem clara | Apagar o zip só quando o job termina (sucesso ou falha final) |
 | 3 | **Cotas checadas antes de enfileirar, sem trava.** Duas requisições simultâneas passam pela contagem. | Pode passar um job da concorrência | Contar dentro da mesma transação com `SELECT ... FOR UPDATE` na linha do usuário |
 | 4 | **Rate limit em memória do processo.** Cada réplica da API tem a sua contagem. | Com várias réplicas o limite efetivo multiplica | Hoje há 1 réplica. Com mais, mover para Redis ou para o nginx |
-| 5 | **Webhook sem validação de destino** (`runner.py:179`). | SSRF: um usuário Pro/Team aponta para a rede interna | Aplicar a mesma lista/validação do clone, resolver DNS e bloquear IP privado |
+| 5 | **Webhook sem validação de destino** (`runner.py`). | SSRF: um usuário Pro/Team aponta para a rede interna | Aplicar a mesma lista/validação do clone, resolver DNS e bloquear IP privado |
 | 6 | **Sem verificação de e-mail e sem SMTP em produção.** | Cadastro com e-mail de terceiro; redefinição de senha não chega | Configurar SMTP e confirmar e-mail antes de liberar jobs |
 | 7 | **`/docs` aberto em produção.** | Expõe o mapa da API | Desligar ou proteger fora de desenvolvimento |
 | 8 | **Sem tela de chaves de API no front.** | Só se gera a chave por API/extensão | Tela "Chaves" em Configurações |
