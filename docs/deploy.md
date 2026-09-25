@@ -134,6 +134,32 @@ Os `server_name` já apontam para `api.legacydoc.com.br` e
 separados** de propósito: no servidor atual o fallback de SPA engole rotas da
 API, e foi por isso que `/health` devolvia o `index.html` do front.
 
+## 6.1 Atras da Cloudflare
+
+Na StayCloud os registros do dominio saem com o proxy da Cloudflare ligado. Dois
+efeitos, ambos verificados no primeiro deploy:
+
+**O servidor nao enxerga o visitante, so a Cloudflare.** Sem tratamento, todo
+mundo conta como o mesmo IP e o limite de requisicoes bloqueia todos juntos.
+Instale a configuracao de IP real, que confia no cabecalho `CF-Connecting-IP`
+somente quando o pedido vem de um IP oficial da Cloudflare:
+
+```bash
+sudo cp infra/nginx-cloudflare-realip.conf /etc/nginx/conf.d/cloudflare-realip.conf
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+A lista de IPs foi gerada de `cloudflare.com/ips-v4` e `ips-v6`. Ela muda
+raramente; regenere se aparecer IP da Cloudflare no log de acesso.
+
+**O HTTPS falha com erro 521 ate existir certificado no servidor.** A Cloudflare
+fala HTTPS com a origem, entao a origem precisa escutar na 443. Emita o
+certificado com o `certbot` da secao anterior.
+
+Conferencia depois de instalar: um pedido pela Cloudflare deve aparecer no log
+com o seu IP real, e um pedido direto ao servidor com `CF-Connecting-IP`
+forjado deve aparecer com o IP de quem chamou, nunca com o forjado.
+
 ## 7. Escalar
 
 ```bash
