@@ -120,7 +120,7 @@
           "auth"
         ],
         "summary": "Request Password Reset",
-        "description": "Envia o link de redefinicao, se a conta existir.\n\nResponde SEMPRE 202 com a mesma mensagem, exista o e-mail ou nao. Dizer\n\"e-mail nao encontrado\" transformaria este endpoint num verificador de quem\ntem conta no sistema.",
+        "description": "Send the reset link when the account exists.\n\nAlways answers 202 with the same message whether or not the email is known;\nsaying otherwise would turn this endpoint into an account checker.",
         "operationId": "request_password_reset_v1_auth_password_reset_request_post",
         "requestBody": {
           "content": {
@@ -166,7 +166,7 @@
           "auth"
         ],
         "summary": "Confirm Password Reset",
-        "description": "Troca a senha usando o token do e-mail e ja devolve sessao autenticada.",
+        "description": "Set a new password from the emailed token and return a session.",
         "operationId": "confirm_password_reset_v1_auth_password_reset_confirm_post",
         "requestBody": {
           "content": {
@@ -236,7 +236,7 @@
           "auth"
         ],
         "summary": "Create Api Key",
-        "description": "Cria uma chave de longa duracao para a extensao do VS Code ou CI.\n\nO valor em claro so existe nesta resposta: o banco guarda apenas o hash.",
+        "description": "Create a long-lived key for the VS Code extension or CI.\n\nThe plaintext exists only in this response; the database stores the hash.",
         "operationId": "create_api_key_v1_auth_api_keys_post",
         "requestBody": {
           "content": {
@@ -700,7 +700,7 @@
           "jobs"
         ],
         "summary": "Create Job",
-        "description": "Enfileira um job e devolve 202 imediatamente.\n\nO cliente acompanha com `GET /v1/jobs/{id}` ate `status` ficar terminal.",
+        "description": "Enqueue a job and return 202 immediately.\n\nClients poll `GET /v1/jobs/{id}` until the status becomes terminal.",
         "operationId": "create_job_v1_jobs_post",
         "security": [
           {
@@ -837,7 +837,7 @@
           "jobs"
         ],
         "summary": "Create Upload Job",
-        "description": "Enfileira a documentacao de um .zip enviado.\n\nTerceira entrada, ao lado de repositorio e trecho: cobre quem nao tem o\ncodigo no GitHub, que e o caso comum de sistema legado.\n\nO arquivo e bytes_written em disco e o job guarda apenas o caminho. A extracao\nacontece no worker, com as protecoes de `legacydoc_core.archive` - fazer\nisso aqui devolveria ao processo HTTP o trabalho pesado que a v2 existe\npara tirar dele.",
+        "description": "Enqueue documentation for an uploaded archive.\n\nThe third entry point alongside repository and snippet, covering code that\nis not on GitHub, which is the common case for legacy systems.\n\nThe upload is written to disk and the job stores only the path. Extraction\nhappens in the worker: doing it here would hand the HTTP process back the\nheavy work that v2 exists to remove from it.",
         "operationId": "create_upload_job_v1_jobs_upload_post",
         "requestBody": {
           "content": {
@@ -930,7 +930,7 @@
           "jobs"
         ],
         "summary": "Cancel",
-        "description": "Cancela um job que ainda nao comecou.\n\nJob em execucao nao e interrompido no meio: o worker so percebe o\ncancelamento no proximo heartbeat.",
+        "description": "Cancel a job that has not started.\n\nA running job is not interrupted mid-flight; the worker only observes the\ncancellation on its next heartbeat.",
         "operationId": "cancel_v1_jobs__job_id__delete",
         "security": [
           {
@@ -1126,7 +1126,7 @@
           "documents"
         ],
         "summary": "Export Document",
-        "description": "Gera o artefato sob demanda, autenticado e no escopo do dono.",
+        "description": "Render the artifact on demand, authenticated and scoped to the owner.",
         "operationId": "export_document_v1_documents__document_id__export_get",
         "security": [
           {
@@ -1252,6 +1252,259 @@
         }
       }
     },
+    "/v1/admin/accounts": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "List Accounts",
+        "description": "Contas com o que decide uma acao: gasto contra o teto, uso e situacao.",
+        "operationId": "list_accounts_v1_admin_accounts_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Trecho do e-mail",
+              "title": "Search"
+            },
+            "description": "Trecho do e-mail"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminAccountList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/accounts/{user_id}/plan": {
+      "patch": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Change Plan",
+        "description": "Troca o plano da conta, exigindo um motivo escrito.",
+        "operationId": "change_plan_v1_admin_accounts__user_id__plan_patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "User Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminPlanChangeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminAccountResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/accounts/{user_id}/status": {
+      "patch": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Change Status",
+        "description": "Ativa ou desativa a conta.\n\nDesativar a propria conta e recusado: e um caminho sem volta pela interface,\nporque a sessao seguinte nao passaria mais pela porta.",
+        "operationId": "change_status_v1_admin_accounts__user_id__status_patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "User Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminStatusChangeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminAccountResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/audit": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "List Audit",
+        "description": "Historico de acoes, da mais recente para a mais antiga.",
+        "operationId": "list_audit_v1_admin_audit_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AdminActionResponse"
+                  },
+                  "title": "Response List Audit V1 Admin Audit Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "tags": [
@@ -1280,6 +1533,232 @@
   },
   "components": {
     "schemas": {
+      "AdminAccountList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AdminAccountResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "AdminAccountList"
+      },
+      "AdminAccountResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "plan_tier": {
+            "type": "string",
+            "title": "Plan Tier"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "is_admin": {
+            "type": "boolean",
+            "title": "Is Admin"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "jobs_this_month": {
+            "type": "integer",
+            "title": "Jobs This Month"
+          },
+          "spent_this_month_usd": {
+            "type": "number",
+            "title": "Spent This Month Usd"
+          },
+          "cost_limit_usd": {
+            "type": "number",
+            "title": "Cost Limit Usd",
+            "description": "Teto do plano, para comparar com o gasto."
+          },
+          "documents_total": {
+            "type": "integer",
+            "title": "Documents Total"
+          },
+          "last_job_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Job At"
+          },
+          "locked_until": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Locked Until",
+            "description": "Preenchido enquanto o bloqueio por tentativas estiver ativo."
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "display_name",
+          "plan_tier",
+          "is_active",
+          "is_admin",
+          "created_at",
+          "jobs_this_month",
+          "spent_this_month_usd",
+          "cost_limit_usd",
+          "documents_total",
+          "last_job_at"
+        ],
+        "title": "AdminAccountResponse",
+        "description": "Uma conta vista pelo painel.\n\nApenas metadados. O conteudo dos documentos nunca aparece aqui: o produto\nprocessa codigo-fonte de terceiros, e um painel que abre a documentacao de\num cliente torna verdadeira a frase \"a equipe le o codigo dos clientes\",\nque passaria a ser obrigatoria na politica de privacidade."
+      },
+      "AdminActionResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "actor_email": {
+            "type": "string",
+            "title": "Actor Email"
+          },
+          "target_email": {
+            "type": "string",
+            "title": "Target Email"
+          },
+          "action": {
+            "type": "string",
+            "title": "Action"
+          },
+          "value_before": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value Before"
+          },
+          "value_after": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value After"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "actor_email",
+          "target_email",
+          "action",
+          "value_before",
+          "value_after",
+          "reason",
+          "created_at"
+        ],
+        "title": "AdminActionResponse"
+      },
+      "AdminPlanChangeRequest": {
+        "properties": {
+          "plan": {
+            "type": "string",
+            "title": "Plan"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 5,
+            "title": "Reason",
+            "description": "Por que esta mudando. Uma troca sem motivo escrito e a que ninguem consegue explicar tres meses depois."
+          }
+        },
+        "type": "object",
+        "required": [
+          "plan",
+          "reason"
+        ],
+        "title": "AdminPlanChangeRequest"
+      },
+      "AdminStatusChangeRequest": {
+        "properties": {
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 5,
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "is_active",
+          "reason"
+        ],
+        "title": "AdminStatusChangeRequest"
+      },
       "ApiKeyCreateRequest": {
         "properties": {
           "name": {
@@ -1437,10 +1916,15 @@
             "title": "Output Language",
             "default": "pt-BR"
           },
-          "include_findings": {
-            "type": "boolean",
-            "title": "Include Findings",
-            "default": true
+          "depth": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GenerationDepth"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -1613,6 +2097,11 @@
             "description": "True quando existem pontos de melhoria, mas o plano atual nao os libera.",
             "default": false
           },
+          "depth": {
+            "type": "string",
+            "title": "Depth",
+            "description": "Profundidade que gerou este documento."
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -1628,6 +2117,7 @@
           "summary",
           "symbols",
           "findings",
+          "depth",
           "created_at"
         ],
         "title": "DocumentResponse"
@@ -1671,6 +2161,10 @@
             "type": "integer",
             "title": "Finding Count"
           },
+          "depth": {
+            "type": "string",
+            "title": "Depth"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -1686,6 +2180,7 @@
           "summary",
           "symbol_count",
           "finding_count",
+          "depth",
           "created_at"
         ],
         "title": "DocumentSummaryResponse"
@@ -1776,6 +2271,16 @@
           "confidence"
         ],
         "title": "FindingResponse"
+      },
+      "GenerationDepth": {
+        "type": "string",
+        "enum": [
+          "basic",
+          "standard",
+          "pro"
+        ],
+        "title": "GenerationDepth",
+        "description": "How much analysis a single job asks for.\n\nSeparate from the plan on purpose. The plan says how deep a customer *may*\ngo; this says how deep they *chose* to go on this job. Someone on a paid\nplan documenting a whole legacy repository usually wants the cheap pass\nover three hundred files, not the audited one, and without this the only\nway to spend less was to stop using the product."
       },
       "HTTPValidationError": {
         "properties": {
@@ -1912,6 +2417,23 @@
             "type": "integer",
             "title": "Document Count",
             "default": 0
+          },
+          "depth": {
+            "type": "string",
+            "title": "Depth",
+            "description": "Profundidade efetivamente aplicada a este job."
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source",
+            "description": "O que foi analisado: a URL do repositorio ou o nome do arquivo. Sem isto, uma lista de jobs so mostra datas e a pessoa nao reconhece qual e qual."
           }
         },
         "type": "object",
@@ -1927,7 +2449,8 @@
           "started_at",
           "finished_at",
           "error_code",
-          "error_message"
+          "error_message",
+          "depth"
         ],
         "title": "JobResponse"
       },
@@ -2093,6 +2616,19 @@
             },
             "type": "array",
             "title": "Features"
+          },
+          "max_depth": {
+            "type": "string",
+            "title": "Max Depth",
+            "description": "Analise mais profunda que este plano pode pedir."
+          },
+          "available_depths": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Available Depths",
+            "description": "Profundidades que este plano pode escolher, da mais barata para a mais cara. O front monta o seletor a partir desta lista em vez de fixar a ordem no codigo."
           }
         },
         "type": "object",
@@ -2103,7 +2639,8 @@
           "monthly_cost_limit_usd",
           "max_files_per_job",
           "max_concurrent_jobs",
-          "features"
+          "features",
+          "max_depth"
         ],
         "title": "PlanInfo"
       },
@@ -2352,10 +2889,16 @@
             "title": "Output Language",
             "default": "pt-BR"
           },
-          "include_findings": {
-            "type": "boolean",
-            "title": "Include Findings",
-            "default": true
+          "depth": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GenerationDepth"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Profundidade da analise. Omitido usa o maximo do plano. Pedir acima do plano nao da erro: e reduzido ao teto, e a resposta informa o que foi efetivamente usado."
           },
           "webhook_url": {
             "anyOf": [
@@ -2374,7 +2917,7 @@
           "repo_url"
         ],
         "title": "RepositoryJobRequest",
-        "description": "Documenta arquivos de um repositorio remoto."
+        "description": "Document files from a remote repository."
       },
       "SnippetJobRequest": {
         "properties": {
@@ -2412,10 +2955,16 @@
             "title": "Output Language",
             "default": "pt-BR"
           },
-          "include_findings": {
-            "type": "boolean",
-            "title": "Include Findings",
-            "default": true
+          "depth": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GenerationDepth"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Profundidade da analise. Omitido usa o maximo do plano. Pedir acima do plano nao da erro: e reduzido ao teto, e a resposta informa o que foi efetivamente usado."
           },
           "webhook_url": {
             "anyOf": [
@@ -2435,7 +2984,7 @@
           "content"
         ],
         "title": "SnippetJobRequest",
-        "description": "Documenta codigo enviado direto. Caminho usado pela extensao do VS Code."
+        "description": "Document inline code. Used by the VS Code extension."
       },
       "SymbolDoc": {
         "properties": {
@@ -2617,6 +3166,12 @@
           "spent_this_month_usd": {
             "type": "number",
             "title": "Spent This Month Usd"
+          },
+          "is_admin": {
+            "type": "boolean",
+            "title": "Is Admin",
+            "description": "Se esta conta abre o painel. O front usa isto para decidir se mostra o acesso; esconder um link nao e controle de acesso, e o painel recusa por conta propria quem nao for administrador.",
+            "default": false
           }
         },
         "type": "object",

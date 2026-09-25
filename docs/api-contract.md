@@ -4,7 +4,12 @@ Documento de referência para quem está construindo o cliente. O `docs/openapi.
 é gerado a partir do código e serve para codegen (`openapi-typescript`, por exemplo);
 este arquivo explica **como usar** o que está lá.
 
-Base URL de desenvolvimento: `http://127.0.0.1:8000`
+| Ambiente | Base URL |
+| :--- | :--- |
+| Produção | `https://api.legacydoc.com.br` |
+| Local | `http://127.0.0.1:8001` |
+
+A documentação interativa, gerada do código, fica em `/docs` na mesma base URL.
 
 ---
 
@@ -26,7 +31,15 @@ login dentro do editor todo dia.
 
 Fluxo de onboarding sugerido na extensão:
 
-1. O usuário gera a chave no painel web (`POST /v1/auth/api-keys`).
+1. O usuário gera a chave (`POST /v1/auth/api-keys`). **O front web ainda não tem tela
+   para isso**, então por enquanto a chave se gera assim, com o e-mail e a senha da
+   conta (o comando devolve o valor uma única vez, depois só o hash existe):
+
+   ```bash
+   TOKEN=$(curl -s -X POST https://api.legacydoc.com.br/v1/auth/login      -H "Content-Type: application/json"      -d '{"email":"voce@exemplo.com","password":"sua-senha"}' | jq -r .access_token)
+
+   curl -s -X POST https://api.legacydoc.com.br/v1/auth/api-keys      -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json"      -d '{"name":"vscode"}'
+   ```
 2. A extensão pede a chave e guarda em `context.secrets` (o SecretStorage do VS Code,
    nunca em `settings.json`, que vai para o controle de versão do usuário).
 3. Valida com `GET /v1/auth/me` — devolve o plano e o consumo do mês.
@@ -41,7 +54,9 @@ Authorization: Bearer ldk_xxx
   "plan": {
     "tier": "pro", "display_name": "Pro",
     "monthly_job_quota": 500, "max_files_per_job": 50, "max_concurrent_jobs": 4,
-    "features": ["documentation", "improvement_findings", "project_context", …]
+    "features": ["documentation", "improvement_findings", "project_context", …],
+    "max_depth": "pro",
+    "available_depths": ["basic", "standard", "pro"]
   },
   "jobs_used_this_month": 37
 }
@@ -79,7 +94,7 @@ Content-Type: application/json
   "content": "<conteúdo do arquivo>",
   "project_id": null,
   "output_language": "pt-BR",
-  "include_findings": true
+  "depth": "standard"
 }
 ```
 
@@ -93,10 +108,30 @@ Resposta `202`:
 {
   "id": "3f2b…", "job_type": "document_snippet", "status": "queued",
   "progress_percent": 0, "progress_message": null, "attempts": 0,
-  "created_at": "2026-09-08T14:22:01Z", "document_count": 0
+  "created_at": "2026-09-08T14:22:01Z", "document_count": 0,
+  "depth": "standard", "source": "src/services/auth.ts"
 }
 ```
 
+
+### Profundidade da análise
+
+`depth` diz quantos agentes rodam, e é o que controla o custo de cada job. Cada nível
+soma um agente ao anterior:
+
+| `depth` | O que roda | Custo medido por arquivo |
+| :--- | :--- | ---: |
+| `basic` | documentação e resumo | US$ 0,002 |
+| `standard` | soma os pontos de melhoria | US$ 0,009 |
+| `pro` | soma a auditoria contra o código | US$ 0,023 |
+
+Omitir o campo usa o teto do plano. **Pedir acima do teto não dá erro**: o pedido é
+reduzido ao que o plano permite, e o `depth` na resposta diz o que foi de fato
+aplicado. Um cliente que sempre manda `pro` funciona em qualquer plano.
+
+Monte o seletor da extensão a partir de `plan.available_depths` em `/v1/auth/me`, sem
+fixar a lista no código. O mesmo campo `depth` vem em cada documento, para a UI
+rotular o que foi gerado com o quê.
 
 ### Enviar um `.zip` (terceira entrada)
 
@@ -111,7 +146,7 @@ Content-Type: multipart/form-data
 file=@projeto.zip
 project_id=<uuid ou vazio>
 output_language=pt-BR
-include_findings=true
+depth=standard
 ```
 
 Responde `202` com o mesmo `JobResponse` das outras entradas — daí em diante o
@@ -400,5 +435,39 @@ Sinalizado para não haver surpresa a meio caminho:
 - **Sem endpoint de diff.** Documentar só o que mudou desde o último commit ainda
   não existe; `content_sha256` está gravado em cada documento, então dá para
   construir, mas a rota não está pronta.
-- **Sem rate limit por IP** nas rotas de auth — está no roadmap.
 - **Sem `Idempotency-Key`** (ver seção 7).
+
+---
+
+## 10. Limites de requisição e o que o cliente deve fazer
+
+A API limita por IP, em três faixas. Ao estourar, responde `429` com o cabeçalho
+`Retry-After` (segundos) e o mesmo envelope de erro das outras falhas:
+
+| Faixa | Limite | Rotas |
+| :--- | :--- | :--- |
+| Leitura | 240 por minuto | tudo que não está abaixo, inclusive o polling de job |
+| Criação de job | 30 por 5 minutos | `POST /v1/jobs` e `/v1/jobs/upload` |
+| Credencial | 20 por 5 minutos | login, cadastro e redefinição de senha |
+
+Respostas de sucesso trazem `X-RateLimit-Limit` e `X-RateLimit-Remaining`. O polling
+a cada 2 a 3 segundos cabe folgado na faixa de leitura; **obedeça o `Retry-After`** em
+vez de insistir, porque insistir só prolonga o bloqueio.
+
+## 11. CORS não se aplica à extensão
+
+O CORS restringe **navegadores**. Uma extensão roda no processo Node do VS Code e não
+envia `Origin`, então nada aqui a afeta. Se um dia ela abrir um *webview* que chame a
+API diretamente do JavaScript da página, aí a origem do webview precisa estar em
+`ALLOWED_ORIGINS`. O caminho recomendado é o webview pedir à extensão, e a extensão
+chamar a API.
+
+## 12. Erros que a extensão deve tratar
+
+| Status | Significa | O que fazer |
+| :---: | :--- | :--- |
+| 401 | Chave ausente, inválida ou revogada | Pedir a chave de novo |
+| 402 | Cota mensal, teto de gasto ou recurso fora do plano | Mostrar `message`, que já diz o que faltou |
+| 404 | Recurso não existe **ou não é seu** | Tratar igual: a API não distingue de propósito |
+| 422 | Corpo inválido ou linguagem não suportada | Mostrar `message` |
+| 429 | Limite de requisições | Esperar `Retry-After` |
