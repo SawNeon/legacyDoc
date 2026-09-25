@@ -4,6 +4,9 @@ Documento de referência para quem está construindo o cliente. O `docs/openapi.
 é gerado a partir do código e serve para codegen (`openapi-typescript`, por exemplo);
 este arquivo explica **como usar** o que está lá.
 
+Para o passo a passo de construir a extensão (login dentro do editor, envio de pasta do
+projeto e acompanhamento do job), veja [`guia-extensao.md`](guia-extensao.md).
+
 | Ambiente | Base URL |
 | :--- | :--- |
 | Produção | `https://api.legacydoc.com.br` |
