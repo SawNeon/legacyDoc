@@ -28,9 +28,6 @@ async def _promote(session, email: str, plan: str) -> None:
     await session.commit()
 
 
-# ------------------------------------------------------------------- auth
-
-
 async def test_health_is_public(client: AsyncClient):
     response = await client.get("/health")
 
@@ -107,9 +104,6 @@ async def test_garbage_token_is_rejected(client: AsyncClient):
     assert response.status_code == 401
 
 
-# ------------------------------------------------------------ chaves de API
-
-
 async def test_api_key_authenticates_and_is_shown_only_once(client: AsyncClient):
     """The VS Code extension path: a credential that does not expire daily."""
     headers, _ = await _register(client)
@@ -154,9 +148,6 @@ async def test_user_cannot_revoke_another_users_key(client: AsyncClient):
     assert response.status_code == 404
 
 
-# --------------------------------------------------------------- projetos
-
-
 async def test_project_is_scoped_to_owner(client: AsyncClient):
     """v1's central leak: every user's data visible to any signed-in account."""
     owner_headers, _ = await _register(client)
@@ -183,9 +174,6 @@ async def test_project_rejects_non_https_repo_url(client: AsyncClient):
     )
 
     assert response.status_code == 422
-
-
-# --------------------------------------------------------------- contexto
 
 
 async def test_context_api_requires_paid_plan(client: AsyncClient, session):
@@ -237,9 +225,6 @@ async def test_context_globs_round_trip(client: AsyncClient, session):
     body = response.json()
     assert body["path_globs"] == ["src/auth/**"]
     assert body["weight"] == 300
-
-
-# ------------------------------------------------------------------- jobs
 
 
 async def test_create_job_returns_202_without_processing(client: AsyncClient, session):
@@ -362,17 +347,10 @@ async def test_job_is_not_visible_to_another_user(client: AsyncClient):
 
 
 async def test_job_listing_only_returns_the_callers_own(client: AsyncClient):
-    """The listing is what the history screen reads.
-
-    Buscar um job alheio pelo id ja era recusado, mas a listagem e outro
-    caminho: se ela vazasse, a tela de historico mostraria analise de outra
-    conta sem ninguem precisar adivinhar id nenhum.
-    """
+    """The listing is what the history screen reads."""
     owner_headers, _ = await _register(client)
     other_headers, _ = await _register(client)
 
-    # Uma analise para cada conta. Duas para a mesma esbarraria no limite de
-    # jobs simultaneos do plano Free, e o alvo aqui e o filtro por dono.
     criados = {}
 
     for rotulo, headers in (("meu", owner_headers), ("dele", other_headers)):
@@ -451,9 +429,6 @@ async def test_cancel_queued_job(client: AsyncClient):
 
     assert response.status_code == 200
     assert response.json()["status"] == "cancelled"
-
-
-# -------------------------------------------------------------- documentos
 
 
 async def _seed_document(session, client, headers) -> tuple[str, str]:
@@ -548,9 +523,6 @@ async def test_invalid_export_format_is_rejected(client: AsyncClient, session):
     response = await client.get(f"/v1/documents/{document_id}/export?format=docx", headers=headers)
 
     assert response.status_code == 422
-
-
-# ------------------------------------------------------------------- meta
 
 
 async def test_languages_endpoint_lists_many_languages(client: AsyncClient):
@@ -671,11 +643,7 @@ async def test_upload_respects_concurrency_limit(client: AsyncClient):
 
 
 async def test_upload_on_free_plan_is_capped_to_the_cheapest_depth(client: AsyncClient, session):
-    """Asking beyond the plan is reduced, not refused.
-
-    A client that always sends the deepest option keeps working on every plan,
-    and the stored job says what will actually be paid for.
-    """
+    """Asking beyond the plan is reduced, not refused."""
     headers, _ = await _register(client)
 
     response = await client.post(
@@ -727,7 +695,7 @@ async def test_monthly_spend_is_reported_in_me(client: AsyncClient, session):
 async def test_user_blocked_when_cost_ceiling_reached(client: AsyncClient, session):
     """A job-count quota protects nothing: the bill is in dollars."""
     headers, email = await _register(client)
-    await _record_spend(session, await _user_id_for(session, email), 0.60)  # acima de US$ 0,50
+    await _record_spend(session, await _user_id_for(session, email), 0.60)
 
     response = await client.post(
         "/v1/jobs",
@@ -756,8 +724,6 @@ async def test_job_accepted_below_cost_ceiling(client: AsyncClient, session):
 
 
 async def test_global_budget_blocks_every_user(client: AsyncClient, session, settings):
-    """Last line of defense for the card: many accounts within their own
-    limits can still add up beyond what the operator can pay."""
     outro_headers, outro_email = await _register(client)
     await _record_spend(
         session,
@@ -765,7 +731,6 @@ async def test_global_budget_blocks_every_user(client: AsyncClient, session, set
         settings.global_monthly_budget_usd + 1,
     )
 
-    # Fresh user with no spend of their own.
     headers, _ = await _register(client)
 
     response = await client.post(
@@ -804,7 +769,6 @@ async def test_account_locks_after_repeated_failures(client: AsyncClient):
     for _ in range(MAX_FAILED_LOGINS):
         assert (await _attempt_login(client, email, "senha-errada-123")).status_code == 401
 
-    # Agora nem a senha CORRETA passa.
     resposta = await _attempt_login(client, email, "senha-bem-longa-123")
 
     assert resposta.status_code == 401
@@ -819,7 +783,6 @@ async def test_successful_login_resets_attempt_counter(client: AsyncClient):
 
     assert (await _attempt_login(client, email, "senha-bem-longa-123")).status_code == 200
 
-    # Counter reset: three more failures do not lock.
     for _ in range(3):
         await _attempt_login(client, email, "senha-errada-123")
 
@@ -849,7 +812,6 @@ async def test_full_password_reset_flow(client: AsyncClient, session, caplog):
 
     assert pedido.status_code == 202
 
-    # The console backend publishes the link to the log.
     token = re.search(r"token=([A-Za-z0-9_\-]+)", caplog.text)
     assert token, f"o link precisa chegar ao usuario; log: {caplog.text[:300]}"
 

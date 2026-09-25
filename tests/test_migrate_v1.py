@@ -1,8 +1,4 @@
-"""Migration tests for v1 -> v2.
-
-The critical property is password portability: if the v1 argon2id hash were not
-verifiable by v2, every user would have to reset their password at cutover.
-"""
+"""Migration tests for v1 -> v2."""
 
 from __future__ import annotations
 
@@ -46,9 +42,7 @@ def legacy_database(tmp_path: Path) -> Path:
         [
             ("ana@empresa.com", legacy_hash, timestamp),
             ("bruno@empresa.com", legacy_hash, timestamp),
-            # v1 let an address without "@" through; production has one.
             ("email-invalido", legacy_hash, timestamp),
-            # A hash from another scheme, which v2 cannot verify.
             ("carlos@empresa.com", "$2b$12$hashdebcryptqualquer", timestamp),
         ],
     )

@@ -1,8 +1,4 @@
-"""Multi-provider routing tests.
-
-Fake providers, so fallback logic and accounting are proven without spending
-money or depending on the network.
-"""
+"""Multi-provider routing tests."""
 
 from __future__ import annotations
 
@@ -197,9 +193,6 @@ async def test_aclose_closes_every_provider():
     assert openai.closed is True
 
 
-# ------------------------------------------------------------------ schema
-
-
 def test_strict_schema_marks_every_field_required():
     schema = to_strict_json_schema(Answer)
 
@@ -234,11 +227,7 @@ def test_json_outside_schema_raises_provider_error():
         parse_model_json('{"campo_errado": 1}', Answer, provider="teste")
 
 
-# ---------------------------------------------------------------- catalogo
-
-
 def test_cost_is_computed_from_the_catalog():
-    # claude-opus-5: 5 USD/MTok de entrada, 25 de saida.
     cost = estimate_cost_usd("claude-opus-5", 1_000_000, 1_000_000)
 
     assert cost == pytest.approx(30.0)
@@ -249,26 +238,15 @@ def test_unknown_model_costs_zero_instead_of_crashing():
 
 
 def test_unverified_prices_are_flagged():
-    """Guard against billing with guessed prices.
-
-    This does not fail today: it documents which prices still need checking
-    against each vendor's official table.
-    """
+    """Guard against billing with guessed prices."""
     pendentes = {spec.model_id for spec in unverified_models()}
 
     assert "claude-opus-5" not in pendentes, "os precos da Anthropic vieram de fonte datada"
     assert pendentes, "check OpenAI and Google pricing before billing customers"
 
 
-# --------------------------------------------------------- prompt caching
-
-
 def test_short_prefix_is_not_marked_for_caching():
-    """Marking a prefix below the minimum is worse than not marking it.
-
-    Providers silently skip the cache under their threshold, but a cache write
-    is billed at a premium, so the request would pay more for nothing.
-    """
+    """Marking a prefix below the minimum is worse than not marking it."""
     request = CompletionRequest(system="s", user="u", model="m", cacheable_prefix="x" * 1000)
 
     assert not request.should_cache_prefix

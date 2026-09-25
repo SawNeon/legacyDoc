@@ -1,18 +1,4 @@
-"""One-way copy of v1 users from SQLite into the v2 Postgres database.
-
-The two databases stay separate so both versions can run side by side during
-the transition and the switch stays reversible. Re-running skips users that
-already exist rather than duplicating them.
-
-Passwords survive the move: both versions use `pwdlib.PasswordHash.recommended()`,
-which produces argon2id in the same format, and the hash is copied verbatim.
-
-Generated documents are not migrated because v1 stores no file owner, so there
-is nobody to attribute them to.
-
-    python -m legacydoc_cli.migrate_v1 --source path/to/legacydoc.db
-    python -m legacydoc_cli.migrate_v1 --source path/to/legacydoc.db --apply
-"""
+"""One-way copy of v1 users from SQLite into the v2 Postgres database."""
 
 from __future__ import annotations
 

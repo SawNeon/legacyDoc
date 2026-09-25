@@ -12,19 +12,8 @@ from legacydoc_core.errors import ValidationError
 logger = logging.getLogger(__name__)
 
 MAX_COMPRESSION_RATIO = 500
-"""Highest uncompressed/compressed ratio accepted per entry.
-
-Calibrated against measurements: real source code compresses 3x-6x, generated
-code with large tables 6x, source with thousands of identical lines 307x, and a
-zip bomb of 50 MB of zeros 1029x.
-
-This is defense in depth rather than the primary control. The guarantee comes
-from `max_file_bytes` and `max_total_bytes`, counted byte by byte while
-writing, so a bomb tuned to 499x is still cut off by them.
-"""
 
 RATIO_CHECK_MIN_SIZE_BYTES = 64 * 1024
-"""Small files compress erratically and would trip the ratio check."""
 
 SYMLINK_MODE = 0o120000
 FILE_TYPE_MASK = 0o170000
@@ -107,11 +96,6 @@ def safe_extract(
     max_file_bytes: int,
     allowed_suffixes: frozenset[str] | None = None,
 ) -> ExtractionResult:
-    """Extract an archive, rejecting traversal, bombs, symlinks and oversized entries.
-
-    Filters by `allowed_suffixes` during extraction rather than afterwards, so an
-    archive full of unsupported files never reaches disk.
-    """
     destination.mkdir(parents=True, exist_ok=True)
     resolved_root = destination.resolve()
     result = ExtractionResult(root=destination, files_written=0, bytes_written=0)

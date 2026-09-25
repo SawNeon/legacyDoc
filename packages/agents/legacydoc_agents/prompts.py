@@ -1,13 +1,4 @@
-"""Agent prompts.
-
-Kept apart from execution code on purpose: prompts change more often than
-anything else, and mixing them with orchestration makes every tweak risky.
-
-The prompt text itself stays in Portuguese because it drives the language of
-the generated documentation. Two changes from v1: prompts no longer name a
-specific programming language, and the output language is a parameter rather
-than a constant.
-"""
+"""Agent prompts."""
 
 from __future__ import annotations
 
@@ -17,11 +8,8 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class PromptContext:
     language: str
-    """Programming language of the code, for example python, cpp or go."""
     output_language: str = "pt-BR"
-    """Language of the generated documentation."""
     project_context: str = ""
-    """Project context supplied through the context API."""
     file_path: str = ""
 
 
@@ -47,9 +35,6 @@ def _context_block(context: PromptContext) -> str:
     )
 
 
-# ----------------------------------------------------------------- READER
-
-
 def reader_system(context: PromptContext) -> str:
     return f"""Voce e o agente Reader. Faz o diagnostico previo de um arquivo de codigo \
 em {context.language} antes da documentacao.
@@ -67,9 +52,6 @@ queries. Se o codigo se explica, deixe queries vazio.
 
 A mensagem ao usuario deve estar em {language_label(context.output_language)}.\
 {_context_block(context)}"""
-
-
-# ----------------------------------------------------------------- WRITER
 
 
 def writer_system(context: PromptContext) -> str:
@@ -105,7 +87,6 @@ def writer_user(
 ) -> str:
     notes = f"\n\nOBSERVACOES DO READER:\n{reader_notes}" if reader_notes.strip() else ""
 
-    # Symbols defined in other files that this snippet calls.
     externos = (
         "\n\nSIMBOLOS DE OUTROS ARQUIVOS QUE ESTE CODIGO USA (contexto de leitura;\n"
         "NAO documente nenhum deles, pertencem a outro arquivo):\n"
@@ -118,9 +99,6 @@ def writer_user(
 
 CODIGO:
 {chunk_source}{externos}{notes}"""
-
-
-# ---------------------------------------------------------------- IMPROVER
 
 
 def improver_system(context: PromptContext) -> str:
@@ -164,9 +142,6 @@ CODIGO:
 {chunk_source}{hints}"""
 
 
-# ---------------------------------------------------------------- VERIFIER
-
-
 def verifier_system(context: PromptContext) -> str:
     return f"""Voce e o agente Verifier, auditor final. Compara a documentacao gerada \
 com o codigo original em {context.language}.
@@ -207,9 +182,6 @@ CODIGO ORIGINAL:
 
 DOCUMENTACAO GERADA:
 {documentation_json}"""
-
-
-# -------------------------------------------------------------- SUMMARIZER
 
 
 def summarizer_system(context: PromptContext) -> str:

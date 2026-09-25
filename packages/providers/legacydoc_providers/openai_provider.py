@@ -1,12 +1,4 @@
-"""OpenAI adapter.
-
-Uses `chat.completions.parse`, which sends the Pydantic model as strict JSON
-Schema and returns a validated instance. When the installed SDK lacks the
-helper, falls back to JSON mode with manual validation.
-
-`max_completion_tokens` is the current parameter; `max_tokens` still works but
-is deprecated in the 3.x SDK.
-"""
+"""OpenAI adapter."""
 
 from __future__ import annotations
 
@@ -61,7 +53,6 @@ class OpenAIProvider:
             value = choice.message.parsed
 
             if value is None:
-                # `refusal` preenchido ou parsing falhou do lado do SDK.
                 refusal = getattr(choice.message, "refusal", None)
                 if refusal:
                     raise ProviderError(f"OpenAI recusou a requisicao: {refusal}")

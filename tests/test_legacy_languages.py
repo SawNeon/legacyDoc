@@ -1,20 +1,9 @@
-"""Measured extractor coverage across legacy languages.
-
-Loading a grammar does not mean the generic extractor finds symbols in it, so
-coverage is asserted rather than claimed.
-
-The tests separate two outcomes explicitly: languages where the extractor finds
-named functions and AST chunking applies, and languages where the grammar loads
-but yields no symbols, so the file falls back to line chunking at lower quality.
-The second group is documented, not hidden.
-"""
+"""Measured extractor coverage across legacy languages."""
 
 from __future__ import annotations
 
 import pytest
 from legacydoc_parsing import build_chunks, detect_language, parse_file
-
-# --------------------------------------------------------------- amostras
 
 AMOSTRAS: dict[str, tuple[str, str]] = {
     "pascal": (
@@ -157,9 +146,6 @@ def _parse(path: str, source: str):
     return parse_file(path, source, language)
 
 
-# ------------------------------------------------------------- cobertura
-
-
 @pytest.mark.parametrize("language", sorted(AMOSTRAS))
 def test_extracts_symbols_from_legacy_language(language: str):
     path, source = AMOSTRAS[language]
@@ -195,16 +181,9 @@ def test_complexity_is_measured_for_legacy_language():
     assert com_if.complexity > 1
 
 
-# ------------------------------------------------------------- degradadas
-
-
 @pytest.mark.parametrize("language", sorted(DEGRADADAS))
 def test_linguagem_degradada_ainda_e_processavel(language: str):
-    """No symbols, but the file must neither be lost nor raise.
-
-    If the grammar ever improves and this starts finding symbols, the test fails
-    on purpose: that is the signal to promote the language to the working set.
-    """
+    """No symbols, but the file must neither be lost nor raise."""
     path, source = DEGRADADAS[language]
     parsed = _parse(path, source)
     chunks = build_chunks(parsed, max_tokens_per_chunk=6000)

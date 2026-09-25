@@ -1,11 +1,4 @@
-"""Git repository cloning and scanning.
-
-URL validation carried over from v1 mostly intact: HTTPS-only from known hosts
-already blocked `file://` and SSH. What was missing were ceilings, so a large
-clone once left 101 MB of orphaned data on the server.
-
-The scan now covers every language the parser supports, not only C and C++.
-"""
+"""Git repository cloning and scanning."""
 
 from __future__ import annotations
 
@@ -79,15 +72,10 @@ class RepoScan:
     skipped_too_large: int
     skipped_binary: int
     truncated: bool
-    """True when the file ceiling was reached and the scan stopped early."""
 
 
 def validate_repo_url(repo_url: str) -> None:
-    """Reject anything that is not HTTPS to a known hosting provider.
-
-    Blocks `file://`, `git://` and SSH, which would let a client-supplied URL
-    read the server disk or reach the internal network.
-    """
+    """Reject anything that is not HTTPS to a known hosting provider."""
     parsed = urlparse(repo_url)
 
     if parsed.scheme != "https":
@@ -115,7 +103,7 @@ def cleanup_directory(directory: Path) -> None:
 
     try:
         shutil.rmtree(directory, onexc=_remove_readonly)
-    except TypeError:  # Python < 3.12 usa `onerror`.
+    except TypeError:
         shutil.rmtree(directory, onerror=_remove_readonly)
     except Exception as exc:
         logger.warning("Nao foi possivel remover %s: %s", directory, exc)
@@ -185,7 +173,6 @@ class RepositoryLoader:
         truncated = False
 
         for current_dir, dirnames, filenames in os.walk(root):
-            # In-place prune stops the walk from descending into vendor directories.
             dirnames[:] = [
                 name
                 for name in dirnames

@@ -1,9 +1,4 @@
-"""Parsing and chunking tests.
-
-Focused on the regression that motivated the rewrite: v1 cut code every 150
-fixed lines, split functions in half, and the writer silently dropped the
-incomplete remainder.
-"""
+"""Parsing and chunking tests."""
 
 from __future__ import annotations
 
@@ -61,7 +56,6 @@ def test_symbols_are_never_split_across_chunks():
 
     for chunk in chunks:
         for symbol in chunk.symbols:
-            # Each symbol's full body must be present in the chunk.
             assert symbol.source in chunk.source
 
     documented = {name for chunk in chunks for name in chunk.symbol_names}
@@ -82,10 +76,7 @@ def test_oversized_symbol_becomes_its_own_chunk():
 
 
 def test_container_body_is_not_duplicated_in_the_chunk():
-    """A class and its methods must not repeat the same code in one chunk.
-
-    Sending the body twice would double token cost for object-oriented files.
-    """
+    """A class and its methods must not repeat the same code in one chunk."""
     source = (
         "class Servico:\n"
         "    def alpha(self):\n"

@@ -1,14 +1,4 @@
-"""Agent-to-provider routing with a fallback chain.
-
-Each agent role has a different cost profile. The writer runs once per chunk
-and dominates volume, so it goes to a cheap model; the verifier runs once per
-file and has to judge fidelity, so it goes to a strong one. Binding everything
-to a single model is expensive where it does not matter and weak where it does.
-
-When the primary provider fails, the call falls through to the next entry
-instead of failing the whole job, which is what makes multi-provider an
-operational advantage rather than a menu option.
-"""
+"""Agent-to-provider routing with a fallback chain."""
 
 from __future__ import annotations
 
@@ -34,19 +24,14 @@ logger = logging.getLogger(__name__)
 
 class AgentRole(StrEnum):
     READER = "reader"
-    """Diagnoses missing context before documentation starts."""
 
     WRITER = "writer"
-    """Writes the documentation. Runs once per chunk and dominates cost."""
 
     IMPROVER = "improver"
-    """Raises improvement findings. Requires judgement."""
 
     VERIFIER = "verifier"
-    """Audits documentation fidelity against the code. Needs the strongest model."""
 
     SUMMARIZER = "summarizer"
-    """Consolidates the file summary from the documented symbols."""
 
 
 @dataclass(frozen=True)
@@ -64,7 +49,6 @@ class RoutePolicy:
     chain: list[ModelChoice] = field(default_factory=list)
 
 
-# Politica padrao: barato no volume, forte na auditoria.
 DEFAULT_ROUTES: dict[AgentRole, RoutePolicy] = {
     AgentRole.READER: RoutePolicy(
         [
@@ -160,11 +144,7 @@ class ProviderRouter:
         routes: dict[AgentRole, RoutePolicy] | None = None,
         usage_sink: UsageSink | None = None,
     ) -> ProviderRouter:
-        """Instantiate only the providers that have a key configured.
-
-        Imports are deliberately late so a deployment using one vendor does not
-        need the other SDKs installed to start.
-        """
+        """Instantiate only the providers that have a key configured."""
         providers: dict[ProviderName, LLMProvider] = {}
 
         if settings.openai_api_key:
@@ -200,11 +180,7 @@ class ProviderRouter:
         return list(self._providers)
 
     def resolve_chain(self, role: AgentRole) -> list[ModelChoice]:
-        """Effective attempt chain, filtered to the configured providers.
-
-        When no policy entry survives the filter, falls back to any available
-        provider: degraded documentation beats a dead job.
-        """
+        """Effective attempt chain, filtered to the configured providers."""
         policy = self._routes.get(role, RoutePolicy())
         chain = [choice for choice in policy.chain if choice.provider in self._providers]
 

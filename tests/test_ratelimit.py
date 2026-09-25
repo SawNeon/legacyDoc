@@ -38,9 +38,6 @@ def _spend_allowance(limiter: SlidingWindowRateLimiter, key: str = "ip") -> None
         limiter.check(key, RULE)
 
 
-# --------------------------------------------------------------- contagem
-
-
 def test_requests_within_the_allowance_pass(limiter):
     assert [limiter.check("ip", RULE).allowed for _ in range(3)] == [True, True, True]
 
@@ -69,20 +66,12 @@ def test_allowance_returns_after_the_window_fully_decays(limiter, clock):
 
 
 def test_boundary_burst_is_not_double_counted(limiter, clock):
-    """A plain fixed window would allow the whole allowance twice here.
-
-    Spending everything at the end of one window and again at the start of the
-    next is the classic way to double the intended rate. The previous window
-    still weighs almost full one second in, so the burst is refused.
-    """
+    """A plain fixed window would allow the whole allowance twice here."""
     clock.advance(59)
     _spend_allowance(limiter)
     clock.advance(2)
 
     assert limiter.check("ip", RULE).allowed is False
-
-
-# ----------------------------------------------------------- retry-after
 
 
 def test_retry_after_is_always_actionable(limiter):
@@ -99,9 +88,6 @@ def test_waiting_the_advertised_time_actually_works(limiter, clock):
     clock.advance(denied.retry_after_seconds)
 
     assert limiter.check("ip", RULE).allowed is True
-
-
-# --------------------------------------------------------------- memoria
 
 
 def test_key_space_is_bounded(clock):
@@ -133,9 +119,6 @@ def test_invalid_rules_are_rejected_at_construction():
         RateLimitRule(max_requests=5, window_seconds=0)
 
 
-# ------------------------------------------------------------------ rotas
-
-
 @pytest.mark.parametrize(
     ("method", "path", "expected"),
     [
@@ -160,9 +143,6 @@ def test_reading_is_more_generous_than_signing_in():
     auth_rate = AUTH_RULE.max_requests / AUTH_RULE.window_seconds
 
     assert read_rate > auth_rate
-
-
-# ------------------------------------------------------------------- http
 
 
 @pytest.fixture
@@ -211,11 +191,7 @@ async def test_repeated_sign_in_attempts_are_throttled(throttled_client):
 
 
 async def test_signing_up_shares_the_sign_in_allowance(throttled_client):
-    """One tier covers the whole credential surface.
-
-    Separate allowances per endpoint would let an attacker switch from login to
-    sign up and get a fresh budget for the same abuse.
-    """
+    """One tier covers the whole credential surface."""
     await _exhaust_auth_tier(throttled_client)
 
     response = await throttled_client.post(
@@ -237,11 +213,7 @@ async def test_the_rejection_keeps_the_shared_error_shape(throttled_client):
 
 
 async def test_the_rejection_still_carries_cors_headers(throttled_client):
-    """Without them the browser reports a network error instead of the 429.
-
-    This is what pins the middleware order: the limiter has to be registered
-    before CORS so that CORS ends up wrapping it.
-    """
+    """Without them the browser reports a network error instead of the 429."""
     origin = "http://localhost:5173"
 
     for _ in range(AUTH_RULE.max_requests + 1):
@@ -279,9 +251,6 @@ async def test_exhausting_the_auth_tier_leaves_reads_working(throttled_client):
     assert (await throttled_client.get("/v1/meta/plans")).status_code == 200
 
 
-# ------------------------------------------------------------------ proxy
-
-
 def _scope(*, client_host: str, forwarded: str = "") -> dict:
     return {
         "type": "http",
@@ -310,11 +279,7 @@ def test_forwarded_address_is_ignored_when_proxies_are_not_trusted(settings):
 
 
 def test_forwarded_address_is_read_from_the_end_of_the_chain(settings):
-    """nginx appends the address it saw, so only the last entry is trustworthy.
-
-    Reading the first entry instead would let any caller forge an address and
-    hand itself an unlimited allowance.
-    """
+    """nginx appends the address it saw, so only the last entry is trustworthy."""
     middleware = _middleware(settings, trust=True)
 
     address = middleware._client_address(

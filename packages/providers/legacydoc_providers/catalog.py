@@ -1,12 +1,4 @@
-"""Model catalog: capabilities and pricing.
-
-Pricing feeds `usage_records`, which is the billing basis, so each entry
-carries `verified_at` and `verified`. A guessed price that reaches an invoice
-is a silent loss.
-
-Anthropic prices come from the official reference dated 2026-06-24, OpenAI from
-its pricing table read on 2026-09-11. Google entries remain unverified.
-"""
+"""Model catalog: capabilities and pricing."""
 
 from __future__ import annotations
 
@@ -31,7 +23,6 @@ class ModelSpec:
     supports_structured_output: bool = True
     verified_at: str = ""
     verified: bool = False
-    """False means the price was not checked against the vendor table."""
 
     def cost_usd(self, input_tokens: int, output_tokens: int) -> float:
         return (
@@ -40,8 +31,6 @@ class ModelSpec:
 
 
 _MODELS: dict[str, ModelSpec] = {
-    # ------------------------------------------------------------- Anthropic
-    # Fonte: referencia oficial da Claude API, cache de 2026-06-24.
     "claude-opus-5": ModelSpec(
         provider=ProviderName.ANTHROPIC,
         model_id="claude-opus-5",
@@ -72,13 +61,6 @@ _MODELS: dict[str, ModelSpec] = {
         verified_at="2026-06-24",
         verified=True,
     ),
-    # ---------------------------------------------------------------- OpenAI
-    # Fonte: tabela oficial de precos da OpenAI, consultada em 2026-09-11.
-    #
-    # Os dois sao modelos de 2024 e continuam sendo a rota padrao por inercia,
-    # nao por escolha. A familia mais nova e varias vezes mais barata para o
-    # mesmo trabalho; ver docs/custos.md antes de mexer, porque trocar exige
-    # confirmar suporte a saida estruturada e medir qualidade, nao so preco.
     "gpt-4o-mini": ModelSpec(
         provider=ProviderName.OPENAI,
         model_id="gpt-4o-mini",
@@ -99,8 +81,6 @@ _MODELS: dict[str, ModelSpec] = {
         verified_at="2026-09-11",
         verified=True,
     ),
-    # ---------------------------------------------------------------- Google
-    # PRICES NOT VERIFIED. Check before billing.
     "gemini-2.0-flash": ModelSpec(
         provider=ProviderName.GEMINI,
         model_id="gemini-2.0-flash",
@@ -135,11 +115,7 @@ def models_for_provider(provider: ProviderName) -> list[ModelSpec]:
 
 
 def estimate_cost_usd(model_id: str, input_tokens: int, output_tokens: int) -> float:
-    """Estimated cost. An unknown model returns 0.0 rather than raising.
-
-    A job should not fail because the catalog is stale; the missing cost shows
-    as zero in reports, which is visible during audit.
-    """
+    """Estimated cost. An unknown model returns 0.0 rather than raising."""
     spec = _MODELS.get(model_id)
     return spec.cost_usd(input_tokens, output_tokens) if spec else 0.0
 

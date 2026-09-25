@@ -1,11 +1,4 @@
-"""Exporter contract and factory.
-
-The factory and abstract base carried over from v1 almost untouched: it was the
-best part of that code and genuinely extensible. What changed is the input,
-now a typed `FileDocumentation` instead of a loose dict, and the output, now
-bytes instead of a file on disk, so one exporter serves HTTP downloads, webhook
-attachments and the VS Code extension alike.
-"""
+"""Exporter contract and factory."""
 
 from __future__ import annotations
 
@@ -80,12 +73,7 @@ class ExporterFactory:
 
 
 def safe_stem(path: str) -> str:
-    """Safe filename that preserves the path hierarchy.
-
-    v1 used the basename alone, so two files with the same name from different
-    repositories overwrote each other on shared disk. Here the full path is
-    flattened, which does not collide.
-    """
+    """Safe filename that preserves the path hierarchy."""
     import re
 
     normalized = path.replace("\\", "/").strip("/")

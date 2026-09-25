@@ -1,13 +1,4 @@
-"""Alembic environment.
-
-The URL always comes from DATABASE_URL, never from alembic.ini, so there is no
-second copy of the credentials in the repository.
-
-It is read the same way the application reads it: an exported environment
-variable first, then the project `.env`. Reading only the environment made
-`alembic upgrade head` fail on a machine whose `.env` was correct, because the
-API picked the value up from the file and the migration did not.
-"""
+"""Alembic environment."""
 
 from __future__ import annotations
 
@@ -30,8 +21,6 @@ def _database_url() -> str:
     if url:
         return url
 
-    # Only loaded when the variable is not exported, so rendering SQL in CI
-    # keeps working without the other settings the application requires.
     from legacydoc_core.settings import get_settings
 
     try:

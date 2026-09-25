@@ -1,9 +1,4 @@
-"""Repository-wide symbol index used as cross-file context for the writer agent.
-
-Documenting a file in isolation leaves the model guessing what a call into
-another file does. The parser already runs over every file in the job, so the
-signatures are available at no token cost.
-"""
+"""Repository-wide symbol index used as cross-file context for the writer agent."""
 
 from __future__ import annotations
 
@@ -65,7 +60,6 @@ COMMON_IDENTIFIERS = frozenset(
         "while",
     }
 )
-"""Names that would match nearly every file without informing the model."""
 
 
 @dataclass(frozen=True)
@@ -116,11 +110,7 @@ class SymbolIndex:
             )
 
     def attach_summaries(self, path: str, summaries: dict[str, str]) -> None:
-        """Enrich already-indexed symbols once their file has been documented.
-
-        Results depend on processing order: the first file of a job sees no
-        summaries. Order is stable across runs because the scan is sorted.
-        """
+        """Enrich already-indexed symbols once their file has been documented."""
         for name, summary in summaries.items():
             definitions = self.definitions_by_name.get(name)
 
@@ -151,7 +141,6 @@ class SymbolIndex:
         max_symbols: int = DEFAULT_MAX_SYMBOLS,
         max_chars: int = DEFAULT_MAX_CHARS,
     ) -> list[IndexedSymbol]:
-        """Return symbols from other files that this snippet mentions, most used first."""
         if not self.definitions_by_name:
             return []
 

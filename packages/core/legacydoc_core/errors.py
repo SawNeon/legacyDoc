@@ -1,8 +1,4 @@
-"""Domain exceptions.
-
-The HTTP layer maps these to status codes. No domain module imports FastAPI,
-so the core stays testable without starting the API.
-"""
+"""Domain exceptions."""
 
 from __future__ import annotations
 

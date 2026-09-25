@@ -1,9 +1,4 @@
-"""Common contract for LLM providers.
-
-The three SDKs expose structured output in incompatible ways: JSON Schema in
-`response_format`, forced tool use, and `response_schema`. This module hides
-the difference behind one call so agents never know which vendor answered.
-"""
+"""Common contract for LLM providers."""
 
 from __future__ import annotations
 
@@ -25,10 +20,8 @@ class Usage:
     output_tokens: int = 0
 
     cache_read_tokens: int = 0
-    """Input tokens served from the provider cache, billed at a fraction."""
 
     cache_write_tokens: int = 0
-    """Input tokens written to the cache, billed at a premium."""
 
     def __add__(self, other: Usage) -> Usage:
         return Usage(
@@ -50,16 +43,9 @@ class StructuredResult(Generic[T]):
     latency_ms: int
     raw_text: str = ""
     fallback_used: bool = False
-    """True when the primary provider failed and the router fell back."""
 
 
 MIN_CACHEABLE_TOKENS = 1024
-"""Below this, providers silently skip the cache.
-
-Marking a shorter prefix is worse than not marking it: a cache write costs
-more than a plain input token, so the request pays a premium for a cache
-that is never created.
-"""
 
 CHARS_PER_TOKEN = 3.6
 
@@ -77,15 +63,8 @@ class CompletionRequest:
     max_output_tokens: int = 4096
 
     cacheable_prefix: str = ""
-    """Stable content placed before `user` and offered to the provider cache.
-
-    Caching is prefix-based, so this only pays off when the same text leads
-    several requests. The orchestrator uses it for the file source in the
-    audit loop, which is resent unchanged on every review round.
-    """
 
     cache_key: str = ""
-    """Groups requests sharing a prefix, improving cache routing."""
 
     extra: dict[str, Any] = field(default_factory=dict)
 
@@ -117,16 +96,8 @@ class LLMProvider(Protocol):
     async def aclose(self) -> None: ...
 
 
-# --------------------------------------------------------------- utilidades
-
-
 def to_strict_json_schema(model: type[BaseModel]) -> dict[str, Any]:
-    """Convert a Pydantic model into JSON Schema accepted in strict mode.
-
-    Strict mode and `response_schema` require every object to declare
-    `additionalProperties: false` and list all properties in `required`.
-    Pydantic marks defaulted fields optional, so the tree is rewritten.
-    """
+    """Convert a Pydantic model into JSON Schema accepted in strict mode."""
     schema = model.model_json_schema()
     _tighten(schema, schema.get("$defs", {}))
     return schema
@@ -138,7 +109,6 @@ def _tighten(node: Any, defs: dict[str, Any]) -> None:
             node["additionalProperties"] = False
             node["required"] = list(node["properties"].keys())
 
-        # Strict mode rejects these validation keywords.
         for unsupported in ("minLength", "maxLength", "minimum", "maximum", "format"):
             node.pop(unsupported, None)
 
@@ -154,11 +124,7 @@ _JSON_FENCE = re.compile(r"```(?:json)?\s*(.*?)\s*```", re.DOTALL)
 
 
 def parse_model_json(raw: str, schema: type[T], *, provider: str) -> T:
-    """Validate raw text against the schema, tolerating markdown fences.
-
-    Models occasionally wrap JSON in a code fence despite instructions. Cleaning
-    the response is cheaper than burning another paid call.
-    """
+    """Validate raw text against the schema, tolerating markdown fences."""
     text = raw.strip()
 
     if not text:
@@ -171,7 +137,6 @@ def parse_model_json(raw: str, schema: type[T], *, provider: str) -> T:
     try:
         payload = json.loads(text)
     except json.JSONDecodeError as exc:
-        # Ultimo recurso: recorta do primeiro '{' ao ultimo '}'.
         start, end = text.find("{"), text.rfind("}")
         if start == -1 or end <= start:
             raise ProviderError(

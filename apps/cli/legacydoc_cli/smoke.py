@@ -1,12 +1,4 @@
-"""End-to-end smoke test against a real provider API.
-
-The test suite uses provider doubles, which validates orchestration but never
-exercises the adapters themselves. This command does, without touching the
-database, so it can run before any infrastructure exists.
-
-    python -m legacydoc_cli.smoke
-    python -m legacydoc_cli.smoke path/to/file.py --plan pro --format markdown
-"""
+"""End-to-end smoke test against a real provider API."""
 
 from __future__ import annotations
 

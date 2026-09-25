@@ -1,15 +1,4 @@
-"""In-process request throttling.
-
-nginx already caps requests per IP at the edge, but the API cannot depend on a
-proxy being in front of it: it also runs in development, behind a different
-ingress, and directly on the container port. This module is the limit that
-travels with the application.
-
-Sliding window counter instead of a list of timestamps per key: memory stays
-constant per key no matter how high the limit is. That matters because the key
-space is chosen by the caller, so an unbounded structure would turn the
-defense into the vulnerability.
-"""
+"""In-process request throttling."""
 
 from __future__ import annotations
 
@@ -54,17 +43,7 @@ class _KeyState:
 
 
 class SlidingWindowRateLimiter:
-    """Approximate sliding window, the same shape nginx and CDNs use.
-
-    A fixed window lets a caller spend the whole allowance at the end of one
-    window and again at the start of the next, doubling the intended rate at
-    the boundary. Weighting the previous window by how much of it still
-    overlaps removes that spike while keeping the memory of a plain counter.
-
-    Not shared between processes. With several API workers the effective limit
-    multiplies by the number of processes, which is why the edge limit in nginx
-    stays in place. Single process, single container: exact.
-    """
+    """Approximate sliding window, the same shape nginx and CDNs use."""
 
     def __init__(
         self,
@@ -113,7 +92,6 @@ class SlidingWindowRateLimiter:
         else:
             self._roll_window(state, window_index)
 
-        # Least recently seen keys are the ones dropped first.
         self._states.move_to_end(key)
 
         return state
@@ -139,21 +117,13 @@ def _seconds_until_allowed(
     rule: RateLimitRule,
     elapsed_fraction: float,
 ) -> int:
-    """When the weighted estimate drops back under the limit.
-
-    The previous window fades out linearly, so the answer is the point where
-    the fading tail plus the requests already spent in the current window fits
-    under the limit again. Answering with a plain "wait one window" would send
-    clients back too early or too late depending on which half they are in.
-    """
+    """When the weighted estimate drops back under the limit."""
     headroom = rule.max_requests - state.current_count
 
     if headroom > 0 and state.previous_count > 0:
         target_fraction = 1.0 - headroom / state.previous_count
         return _at_least_one_second((target_fraction - elapsed_fraction) * rule.window_seconds)
 
-    # The current window alone is already full: it has to become the fading
-    # one before any allowance returns.
     remaining_window = (1.0 - elapsed_fraction) * rule.window_seconds
     decay_needed = max(0.0, 1.0 - rule.max_requests / max(state.current_count, 1))
 

@@ -1,12 +1,4 @@
-"""Repository loading: the step between a URL and something the parser can read.
-
-Until now only URL validation was covered, so the walk that decides which files
-reach the model, and the ceilings that keep a large repository from filling the
-disk, had never run in a test. Everything here uses a real directory tree.
-
-The clone itself needs the network, so it lives behind an opt-in flag the same
-way the Postgres queue tests do.
-"""
+"""Repository loading: the step between a URL and something the parser can read."""
 
 from __future__ import annotations
 
@@ -52,9 +44,6 @@ def _write(root: Path, relative: str, content: str | bytes = CODE) -> Path:
     return path
 
 
-# ------------------------------------------------------------------ varredura
-
-
 async def test_scan_collects_supported_sources(tmp_path):
     repo = tmp_path / "repo"
     _write(repo, "src/app.py")
@@ -67,11 +56,7 @@ async def test_scan_collects_supported_sources(tmp_path):
 
 
 async def test_scan_ignores_dependency_and_build_directories(tmp_path):
-    """A vendored dependency is not the customer's legacy code.
-
-    Without this a single node_modules would exhaust the file ceiling before
-    reaching anything worth documenting, and bill for the privilege.
-    """
+    """A vendored dependency is not the customer's legacy code."""
     repo = tmp_path / "repo"
     _write(repo, "src/app.py")
     _write(repo, "node_modules/lib/index.js", "module.exports = 1;\n")
@@ -184,14 +169,8 @@ async def test_scanning_a_repository_without_code_returns_empty(tmp_path):
     assert scan.total_files_seen == 0
 
 
-# --------------------------------------------------------------------- limpeza
-
-
 def test_cleanup_removes_read_only_files(tmp_path):
-    """Git marks objects read-only on Windows and plain rmtree fails on them.
-
-    A clone that cannot be deleted is how v1 left 101 MB behind per job.
-    """
+    """Git marks objects read-only on Windows and plain rmtree fails on them."""
     repo = tmp_path / "repo"
     target = _write(repo, "objects/pack.idx", "conteudo\n")
     os.chmod(target, 0o444)
@@ -203,9 +182,6 @@ def test_cleanup_removes_read_only_files(tmp_path):
 
 def test_cleanup_of_a_missing_directory_is_not_an_error(tmp_path):
     cleanup_directory(tmp_path / "nunca-existiu")
-
-
-# ------------------------------------------------------------------------ url
 
 
 @pytest.mark.parametrize(
@@ -237,8 +213,6 @@ async def test_clone_refuses_a_bad_url_before_touching_disk(tmp_path):
 
     assert not (tmp_path / "tmp").exists(), "nothing should be created for a rejected URL"
 
-
-# ------------------------------------------------------------------ rede real
 
 CLONE_TEST_URL = os.environ.get("CLONE_TEST_REPO_URL", "")
 

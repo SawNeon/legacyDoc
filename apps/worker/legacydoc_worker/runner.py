@@ -1,10 +1,4 @@
-"""Worker main loop.
-
-Each process runs N concurrent slots. A slot claims a job, executes it and
-releases. Scaling means raising `WORKER_CONCURRENCY` or starting more
-replicas: SKIP LOCKED guarantees two workers never take the same job without
-any coordination between them.
-"""
+"""Worker main loop."""
 
 from __future__ import annotations
 
@@ -56,8 +50,6 @@ class Worker:
 
         logger.info("Worker %s encerrado.", self._worker_id)
 
-    # ------------------------------------------------------------- slots
-
     async def _slot(self, index: int) -> None:
         slot_id = f"{self._worker_id}#{index}"
 
@@ -69,7 +61,6 @@ class Worker:
                 claimed = False
 
             if not claimed:
-                # Idle queue: waits the interval but wakes immediately on shutdown.
                 try:
                     await asyncio.wait_for(
                         self._shutdown.wait(),
@@ -106,7 +97,6 @@ class Worker:
             try:
                 outcome = await self._processor.process(session, job, worker_id=slot_id)
             except LegacyDocError as exc:
-                # Domain errors do not improve on retry.
                 await fail_job(
                     session,
                     job_id=job_id,
@@ -119,7 +109,6 @@ class Worker:
                 await self._notify(job, status="failed", error=exc.message)
                 return
             except Exception as exc:
-                # Transient failures are worth retrying.
                 requeued = await fail_job(
                     session,
                     job_id=job_id,
@@ -157,8 +146,6 @@ class Worker:
 
         await self._notify(job, status="succeeded", documents=outcome.documents_created)
 
-    # ------------------------------------------------------------ manutencao
-
     async def _reaper(self) -> None:
         """Requeue jobs whose worker died without finishing."""
         while not self._shutdown.is_set():
@@ -190,16 +177,11 @@ class Worker:
             logger.warning("Webhook do job %s falhou: %s", job.id, exc)
 
     def _install_signal_handlers(self) -> None:
-        """Graceful shutdown: stop claiming work and let the current job finish.
-
-        Without it a deploy would kill jobs mid-flight; the lease would return
-        them to the queue and spend tokens again.
-        """
+        """Graceful shutdown: stop claiming work and let the current job finish."""
         loop = asyncio.get_running_loop()
 
         for sig in (signal.SIGINT, signal.SIGTERM):
             try:
                 loop.add_signal_handler(sig, self._shutdown.set)
             except NotImplementedError:
-                # Windows does not support add_signal_handler for every signal.
                 signal.signal(sig, lambda *_: self._shutdown.set())

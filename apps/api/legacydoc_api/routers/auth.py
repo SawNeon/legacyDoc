@@ -92,13 +92,9 @@ async def login(
     email = normalize_email(payload.email)
     user = (await session.execute(select(User).where(User.email == email))).scalar_one_or_none()
 
-    # Identical response for unknown email and wrong password: any difference
-    # here becomes an account enumeration oracle.
     if user is None:
         raise AuthenticationError("Credenciais invalidas.")
 
-    # Checked before verifying the password, otherwise an attacker keeps
-    # testing candidates and is only stopped afterwards.
     if is_locked(user.locked_until):
         raise AuthenticationError(
             "Conta temporariamente bloqueada por tentativas seguidas de login. "
@@ -111,8 +107,6 @@ async def login(
 
         remaining_attempts = MAX_FAILED_LOGINS - user.failed_login_attempts
 
-        # Explicit commit before raising: the session rolls back on exception, so
-        # the attempt counter would never persist and lockout would never trigger.
         await session.commit()
 
         if user.locked_until is not None:
@@ -120,7 +114,6 @@ async def login(
                 "Conta temporariamente bloqueada por tentativas seguidas de login."
             )
 
-        # The remaining count is never revealed: it would confirm the email exists.
         logger.info("Failed login for %s; %d attempt(s) before lockout.", email, remaining_attempts)
         raise AuthenticationError("Credenciais invalidas.")
 
@@ -159,16 +152,11 @@ async def request_password_reset(
     session: AsyncSession = Depends(get_db),
     settings: Settings = Depends(get_app_settings),
 ) -> dict[str, str]:
-    """Send the reset link when the account exists.
-
-    Always answers 202 with the same message whether or not the email is known;
-    saying otherwise would turn this endpoint into an account checker.
-    """
+    """Send the reset link when the account exists."""
     email = normalize_email(payload.email)
     user = (await session.execute(select(User).where(User.email == email))).scalar_one_or_none()
 
     if user is not None and user.is_active:
-        # Requesting a new link invalidates any previous one.
         await session.execute(
             update(PasswordResetToken)
             .where(
@@ -239,16 +227,12 @@ async def confirm_password_reset(
 
     user.password_hash = hash_password(payload.new_password)
 
-    # Proving email access clears the lockout the attack itself caused.
     user.failed_login_attempts = 0
     user.locked_until = None
 
     reset_token.used_at = datetime.now(UTC)
 
     return _token_for(user, settings)
-
-
-# --------------------------------------------------------------- chaves API
 
 
 @router.post(
@@ -261,10 +245,7 @@ async def create_api_key(
     principal: Principal = Depends(get_principal),
     session: AsyncSession = Depends(get_db),
 ) -> ApiKeyCreatedResponse:
-    """Create a long-lived key for the VS Code extension or CI.
-
-    The plaintext exists only in this response; the database stores the hash.
-    """
+    """Create a long-lived key for the VS Code extension or CI."""
     generated = generate_api_key()
 
     record = ApiKey(
@@ -323,9 +304,6 @@ async def revoke_api_key(
         raise NotFoundError("Chave nao encontrada.")
 
     key.revoked_at = datetime.now(UTC)
-
-
-# ------------------------------------------------------------------ apoio
 
 
 def _token_for(user: User, settings: Settings) -> TokenResponse:

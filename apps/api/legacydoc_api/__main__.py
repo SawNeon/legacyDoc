@@ -1,8 +1,4 @@
-"""Development entrypoint: `python -m legacydoc_api`.
-
-In production the service runs under uvicorn with the process managed by
-systemd or Docker, never through this module.
-"""
+"""Development entrypoint: `python -m legacydoc_api`."""
 
 from __future__ import annotations
 

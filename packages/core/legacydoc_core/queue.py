@@ -1,16 +1,4 @@
-"""Job queue built on Postgres.
-
-There is no separate broker. Workers claim work with
-`SELECT ... FOR UPDATE SKIP LOCKED`, which is atomic and lets N concurrent
-workers run without two claiming the same job.
-
-Every job carries a lease that the running worker keeps renewing. If the
-process dies the lease expires and another worker reclaims the job, so a
-deploy mid-processing does not lose the client request.
-
-The SQLite path exists only so the test suite can run without a container. It
-has no SKIP LOCKED and must not be used with real concurrency.
-"""
+"""Job queue built on Postgres."""
 
 from __future__ import annotations
 
@@ -68,11 +56,7 @@ async def claim_job(
     worker_id: str,
     lease_seconds: int,
 ) -> Job | None:
-    """Claim the next eligible job, or None when the queue is empty.
-
-    Ordered by priority so paid plans go first, then by `scheduled_at`, which
-    preserves FIFO within a tier.
-    """
+    """Claim the next eligible job, or None when the queue is empty."""
     lease_until = _now() + timedelta(seconds=lease_seconds)
 
     if _is_postgres(session):
@@ -153,11 +137,7 @@ async def heartbeat(
     progress_percent: int | None = None,
     progress_message: str | None = None,
 ) -> bool:
-    """Renew the lease and publish progress.
-
-    Returns False when the job no longer belongs to this worker, in which case
-    the caller must abort to avoid duplicating work.
-    """
+    """Renew the lease and publish progress."""
     values: dict[str, Any] = {"lease_expires_at": _now() + timedelta(seconds=lease_seconds)}
 
     if progress_percent is not None:
@@ -207,10 +187,7 @@ async def fail_job(
     error_message: str,
     retryable: bool = True,
 ) -> bool:
-    """Record a failure, rescheduling with backoff while attempts remain.
-
-    Returns True when the job returned to the queue, False when it failed for good.
-    """
+    """Record a failure, rescheduling with backoff while attempts remain."""
     job = await session.get(Job, job_id)
 
     if job is None or job.locked_by != worker_id:
@@ -239,10 +216,7 @@ async def fail_job(
 
 
 async def reap_expired_leases(session: AsyncSession) -> int:
-    """Requeue jobs whose worker died without finishing.
-
-    Jobs that exhausted their attempts become FAILED instead of looping forever.
-    """
+    """Requeue jobs whose worker died without finishing."""
     now = _now()
 
     requeued = await session.execute(
@@ -295,11 +269,7 @@ async def count_active_jobs_for_user(session: AsyncSession, user_id: uuid.UUID) 
 
 
 async def cancel_job(session: AsyncSession, *, job_id: uuid.UUID) -> bool:
-    """Cancel a job that has not started.
-
-    A running job is not interrupted; the worker only observes cancellation on
-    its next heartbeat.
-    """
+    """Cancel a job that has not started."""
     result = await session.execute(
         update(Job)
         .where(Job.id == job_id, Job.status == JobStatus.QUEUED)

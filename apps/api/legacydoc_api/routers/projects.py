@@ -1,9 +1,4 @@
-"""Projects and the context API.
-
-Project context is what separates generic LLM output from documentation that
-understands the domain: clients register glossaries, architecture decisions and
-conventions, and the orchestrator injects the relevant entries per file.
-"""
+"""Projects and the context API."""
 
 from __future__ import annotations
 
@@ -123,9 +118,6 @@ async def delete_project(
     await session.delete(project)
 
 
-# -------------------------------------------------------- API de contexto
-
-
 @router.get("/{project_id}/context", response_model=list[ContextItemResponse])
 async def list_context(
     project_id: uuid.UUID,
@@ -205,9 +197,6 @@ async def delete_context(
         raise NotFoundError("Item de contexto nao encontrado.")
 
     await session.delete(item)
-
-
-# ------------------------------------------------------------------ apoio
 
 
 def _to_response(project: Project) -> ProjectResponse:

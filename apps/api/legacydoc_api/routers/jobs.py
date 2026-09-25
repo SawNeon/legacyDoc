@@ -1,10 +1,4 @@
-"""Jobs: enqueue, track and cancel.
-
-Central difference from v1: the create endpoint answers 202 in milliseconds
-with an id and processing happens in a separate worker. v1 ran the clone and
-every LLM call inside an async handler, which blocked the whole event loop and
-exceeded the nginx read timeout on any large repository.
-"""
+"""Jobs: enqueue, track and cancel."""
 
 from __future__ import annotations
 
@@ -54,10 +48,7 @@ async def create_job(
     session: AsyncSession = Depends(get_db),
     settings: Settings = Depends(get_app_settings),
 ) -> JobResponse:
-    """Enqueue a job and return 202 immediately.
-
-    Clients poll `GET /v1/jobs/{id}` until the status becomes terminal.
-    """
+    """Enqueue a job and return 202 immediately."""
     await enforce_cost_budget(principal, session, settings)
     await enforce_job_quota(principal, session)
 
@@ -123,15 +114,7 @@ async def create_upload_job(
     session: AsyncSession = Depends(get_db),
     settings: Settings = Depends(get_app_settings),
 ) -> JobResponse:
-    """Enqueue documentation for an uploaded archive.
-
-    The third entry point alongside repository and snippet, covering code that
-    is not on GitHub, which is the common case for legacy systems.
-
-    The upload is written to disk and the job stores only the path. Extraction
-    happens in the worker: doing it here would hand the HTTP process back the
-    heavy work that v2 exists to remove from it.
-    """
+    """Enqueue documentation for an uploaded archive."""
     await enforce_cost_budget(principal, session, settings)
     await enforce_job_quota(principal, session)
 
@@ -151,8 +134,6 @@ async def create_upload_job(
 
     try:
         with open(destination, "wb") as sink:
-            # Counts bytes while streaming: content-length comes from the client
-            # and is not a limit. Aborts as soon as the ceiling is crossed.
             while block := await file.read(1024 * 1024):
                 if not first_block:
                     first_block = block[:8]
@@ -169,7 +150,6 @@ async def create_upload_job(
         if bytes_written == 0:
             raise ValidationError("O arquivo enviado esta vazio.")
 
-        # The signature decides, not the client-declared content type.
         if not looks_like_zip(first_block):
             raise ValidationError("O conteudo enviado nao e um .zip.")
     except Exception:
@@ -247,11 +227,7 @@ async def cancel(
     principal: Principal = Depends(get_principal),
     session: AsyncSession = Depends(get_db),
 ) -> JobResponse:
-    """Cancel a job that has not started.
-
-    A running job is not interrupted mid-flight; the worker only observes the
-    cancellation on its next heartbeat.
-    """
+    """Cancel a job that has not started."""
     job = await _owned_job(job_id, principal, session)
 
     if JobStatus(job.status).is_terminal:
@@ -263,9 +239,6 @@ async def cancel(
     await session.refresh(job)
 
     return _to_response(job, 0)
-
-
-# ------------------------------------------------------------------ apoio
 
 
 async def _owned_job(job_id: uuid.UUID, principal: Principal, session: AsyncSession) -> Job:
@@ -312,12 +285,7 @@ def _to_response(job: Job, document_count: int) -> JobResponse:
 
 
 def _source_of(job: Job) -> str | None:
-    """O que foi analisado, no formato que faz sentido para cada tipo de job.
-
-    Os parametros inteiros nao sao expostos: eles carregam o conteudo do
-    trecho enviado e o caminho do arquivo no disco do servidor, e nem um nem
-    outro tem por que voltar numa listagem.
-    """
+    """O que foi analisado, no formato que faz sentido para cada tipo de job."""
     params = job.params or {}
 
     return params.get("repo_url") or params.get("original_filename") or params.get("path")

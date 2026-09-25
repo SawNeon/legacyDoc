@@ -1,9 +1,4 @@
-"""Database diagnostics and operational commands for the v2 service.
-
-python -m legacydoc_cli.db check
-python -m legacydoc_cli.db wait --timeout 60
-python -m legacydoc_cli.db create-user dev@example.com --plan pro
-"""
+"""Database diagnostics and operational commands for the v2 service."""
 
 from __future__ import annotations
 
@@ -171,7 +166,6 @@ async def command_check(args: argparse.Namespace) -> int:
 
 
 async def command_wait(args: argparse.Namespace) -> int:
-    """Block until the database accepts connections. Designed as a container entrypoint."""
     settings = get_settings()
     engine = init_engine(settings)
 
@@ -201,12 +195,7 @@ async def command_wait(args: argparse.Namespace) -> int:
 
 
 def _password_for(args: argparse.Namespace, settings: Settings) -> str:
-    """Ask for a password only when one is actually going to be stored.
-
-    With --update the command only changes the plan, so prompting first hangs
-    any non-interactive caller: a deploy script, a container entrypoint, a CI
-    step. It has to read what the command will do before asking for anything.
-    """
+    """Ask for a password only when one is actually going to be stored."""
     if args.update:
         return ""
 
@@ -272,12 +261,7 @@ async def command_create_user(args: argparse.Namespace) -> int:
 
 
 async def command_set_admin(args: argparse.Namespace) -> int:
-    """Concede ou revoga acesso ao painel de contas.
-
-    Existe como comando e nao como rota de propósito: ganhar privilégio
-    administrativo não deve ser algo que se alcance por HTTP. Quem promove
-    precisa de acesso ao servidor, e isso é a intenção.
-    """
+    """Concede ou revoga acesso ao painel de contas."""
     settings = get_settings()
 
     try:

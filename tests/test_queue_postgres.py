@@ -1,10 +1,4 @@
-"""Queue concurrency proven against a real Postgres.
-
-`SELECT ... FOR UPDATE SKIP LOCKED` exists only on Postgres, so the mutual
-exclusion the whole worker fleet depends on cannot be verified by the SQLite
-suite. Everything here is skipped unless DATABASE_URL points at Postgres, and
-CI runs it against a service container.
-"""
+"""Queue concurrency proven against a real Postgres."""
 
 from __future__ import annotations
 

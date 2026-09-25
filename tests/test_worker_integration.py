@@ -1,8 +1,4 @@
-"""Integration: from the queue to stored documents.
-
-Exercises the full worker path without spending tokens or touching the network:
-the provider router is replaced by a double returning scripted responses.
-"""
+"""Integration: from the queue to stored documents."""
 
 from __future__ import annotations
 
@@ -37,11 +33,7 @@ SOURCE = (
 
 
 class FakeRouter:
-    """Stand-in for ProviderRouter, answering per role.
-
-    Honours `usage_sink` like the real router: without it the billing test
-    would measure the double instead of the processor wiring.
-    """
+    """Stand-in for ProviderRouter, answering per role."""
 
     def __init__(self, usage_sink=None) -> None:
         self.calls: list[AgentRole] = []
@@ -147,7 +139,6 @@ def fake_router(monkeypatch) -> FakeRouter:
         classmethod(_from_settings),
     )
 
-    # Proxy: os testes inspecionam o roteador criado dentro do processor.
     class _Proxy:
         @property
         def calls(self):
@@ -197,7 +188,6 @@ async def test_full_job_produces_document_and_findings(session, pro_user, settin
     assert document.user_id == pro_user.id, "every document needs an owner"
     assert {symbol["name"] for symbol in document.symbols} == {"adicionar", "calcular_total"}
 
-    # Lines and complexity come from the AST, not the model.
     adicionar = next(s for s in document.symbols if s["name"] == "adicionar")
     assert adicionar["line_start"] == 2
     assert adicionar["complexity_estimate"] >= 2
@@ -225,7 +215,6 @@ async def test_usage_is_recorded_for_billing(session, pro_user, settings, fake_r
     assert records, "every LLM call must record usage"
     assert all(record.job_id == claimed.id for record in records)
     assert all(record.user_id == pro_user.id for record in records)
-    # claude-sonnet-5: 2 USD/MTok entrada, 10 de saida.
     assert sum(record.cost_usd for record in records) > 0
 
 
@@ -302,11 +291,7 @@ async def test_document_export_works_end_to_end(session, pro_user, settings, fak
 async def test_standard_depth_buys_findings_without_the_audit(
     session, pro_user, settings, fake_router
 ):
-    """The middle rung exists to be genuinely cheaper than the top one.
-
-    The verifier is the single most expensive step of a job, so a depth that
-    skipped the improver instead would not save what the customer expects.
-    """
+    """The middle rung exists to be genuinely cheaper than the top one."""
     await _queue_snippet_job(session, pro_user, depth="standard")
     claimed = await claim_job(session, worker_id="w1", lease_seconds=300)
     await session.commit()
@@ -336,11 +321,7 @@ async def test_the_document_records_the_depth_that_produced_it(
 
 
 async def test_a_downgrade_while_queued_is_honoured(session, pro_user, settings, fake_router):
-    """A job can wait in the queue while the account changes plan.
-
-    Trusting the depth stored at creation would let someone enqueue on a paid
-    plan, drop to Free, and still be served the expensive agents.
-    """
+    """A job can wait in the queue while the account changes plan."""
     await _queue_snippet_job(session, pro_user, depth="pro")
 
     pro_user.plan_tier = "free"
@@ -362,13 +343,6 @@ async def test_a_downgrade_while_queued_is_honoured(session, pro_user, settings,
 async def test_a_retried_job_resumes_instead_of_documenting_again(
     session, pro_user, settings, fake_router
 ):
-    """A job returns to the queue after a transient failure, and the files it
-    already documented were committed one by one.
-
-    Without resuming, the second attempt tried to insert a document for the same
-    (job, path), hit the unique constraint, and failed for good with half the
-    work stored, having paid for every file twice.
-    """
     await _queue_snippet_job(session, pro_user)
 
     claimed = await claim_job(session, worker_id="w1", lease_seconds=300)
@@ -383,7 +357,6 @@ async def test_a_retried_job_resumes_instead_of_documenting_again(
 
     assert first.documents_created == 1
     assert second.documents_created == 1, "the resumed run still reports the whole job"
-    # Each process() builds its own router, so this list belongs to the second run.
     assert fake_router.calls == [], "no second charge for the same file"
 
     documents = (await session.execute(select(Document))).scalars().all()

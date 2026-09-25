@@ -1,9 +1,4 @@
-"""Queue tests.
-
-Caveat: SQLite does not implement `FOR UPDATE SKIP LOCKED`, so these exercise
-the optimistic claim path. Mutual exclusion under real concurrency depends on
-Postgres and needs an integration test with a container.
-"""
+"""Queue tests."""
 
 from __future__ import annotations
 

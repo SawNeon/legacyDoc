@@ -1,9 +1,4 @@
-"""Public metadata: languages, plans and export formats.
-
-The VS Code extension queries the language list at startup to decide where to
-offer its action, rather than embedding a copy that drifts every time a new
-language is added.
-"""
+"""Public metadata: languages, plans and export formats."""
 
 from __future__ import annotations
 

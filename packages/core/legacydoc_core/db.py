@@ -1,9 +1,4 @@
-"""Async SQLAlchemy engine and session management.
-
-The API and the worker share this module. Each creates its own engine at
-startup and disposes it at shutdown, so connections never leak between
-processes.
-"""
+"""Async SQLAlchemy engine and session management."""
 
 from __future__ import annotations
 
@@ -36,7 +31,6 @@ def init_engine(settings: Settings) -> AsyncEngine:
         "future": True,
     }
 
-    # SQLite does not accept the Postgres pool parameters.
     if settings.database_url.startswith("postgresql"):
         kwargs["pool_size"] = settings.db_pool_size
         kwargs["max_overflow"] = settings.db_max_overflow
@@ -55,12 +49,7 @@ def init_engine(settings: Settings) -> AsyncEngine:
 
 
 def _enforce_sqlite_foreign_keys(engine: AsyncEngine) -> None:
-    """Liga a checagem de chave estrangeira em toda conexao SQLite.
-
-    O SQLite aceita a declaracao e a ignora por padrao, entao `ON DELETE
-    CASCADE` e `SET NULL` nao acontecem. Em desenvolvimento isso e pior que
-    inutil: esconde defeito que so aparece em producao, onde o Postgres aplica.
-    """
+    """Liga a checagem de chave estrangeira em toda conexao SQLite."""
     from sqlalchemy import event
 
     @event.listens_for(engine.sync_engine, "connect")

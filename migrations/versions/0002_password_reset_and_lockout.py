@@ -1,9 +1,4 @@
-"""Login attempt lockout and password recovery.
-
-Revision ID: 0002_reset_lockout
-Revises: 0001_initial
-Create Date: 2026-09-10
-"""
+"""Login attempt lockout and password recovery."""
 
 from __future__ import annotations
 
@@ -19,7 +14,6 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    # server_default is required or ALTER TABLE fails on existing rows.
     op.add_column(
         "users",
         sa.Column(
@@ -50,7 +44,6 @@ def upgrade() -> None:
         sa.UniqueConstraint("token_hash"),
     )
     op.create_index("ix_password_reset_tokens_user_id", "password_reset_tokens", ["user_id"])
-    # Lookup is always by hash; without this index it would be a scan.
     op.create_index("ix_password_reset_tokens_token_hash", "password_reset_tokens", ["token_hash"])
     op.create_index("ix_password_reset_user", "password_reset_tokens", ["user_id", "used_at"])
 

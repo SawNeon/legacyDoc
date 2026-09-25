@@ -1,8 +1,4 @@
-"""HTTP contracts.
-
-These models are the public API contract consumed by the VS Code extension and
-the web front. A breaking change here requires a new route version.
-"""
+"""HTTP contracts."""
 
 from __future__ import annotations
 
@@ -13,8 +9,6 @@ from typing import Any, Literal
 from legacydoc_core.domain import SymbolDoc
 from legacydoc_core.plans import GenerationDepth
 from pydantic import BaseModel, Field
-
-# ------------------------------------------------------------------- auth
 
 
 class RegisterRequest(BaseModel):
@@ -58,7 +52,6 @@ class UserResponse(BaseModel):
     plan: PlanInfo
     jobs_used_this_month: int
     spent_this_month_usd: float
-    """Real LLM spend this month, used by the front to show remaining budget."""
 
     is_admin: bool = Field(
         default=False,
@@ -83,10 +76,6 @@ class ApiKeyResponse(BaseModel):
 
 class ApiKeyCreatedResponse(ApiKeyResponse):
     api_key: str
-    """Plaintext value, shown only in this response and never recoverable."""
-
-
-# --------------------------------------------------------------- projetos
 
 
 class ProjectCreateRequest(BaseModel):
@@ -113,9 +102,6 @@ class ProjectResponse(BaseModel):
     created_at: datetime
 
 
-# --------------------------------------------------------------- contexto
-
-
 class ContextItemCreateRequest(BaseModel):
     kind: Literal[
         "glossary", "architecture", "convention", "domain_rule", "dependency", "freeform"
@@ -139,9 +125,6 @@ class ContextItemResponse(BaseModel):
     tags: list[str]
     weight: int
     created_at: datetime
-
-
-# ------------------------------------------------------------------- jobs
 
 
 class RepositoryJobRequest(BaseModel):
@@ -214,9 +197,6 @@ class JobListResponse(BaseModel):
     total: int
 
 
-# -------------------------------------------------------------- documentos
-
-
 class DocumentSummaryResponse(BaseModel):
     id: uuid.UUID
     job_id: uuid.UUID
@@ -258,9 +238,6 @@ class DocumentResponse(BaseModel):
     created_at: datetime
 
 
-# ------------------------------------------------------------------- meta
-
-
 class LanguageResponse(BaseModel):
     name: str
     display_name: str
@@ -285,17 +262,8 @@ class PasswordResetConfirm(BaseModel):
     new_password: str
 
 
-# ------------------------------------------------------------------ admin
-
-
 class AdminAccountResponse(BaseModel):
-    """Uma conta vista pelo painel.
-
-    Apenas metadados. O conteudo dos documentos nunca aparece aqui: o produto
-    processa codigo-fonte de terceiros, e um painel que abre a documentacao de
-    um cliente torna verdadeira a frase "a equipe le o codigo dos clientes",
-    que passaria a ser obrigatoria na politica de privacidade.
-    """
+    """Uma conta vista pelo painel."""
 
     id: uuid.UUID
     email: str

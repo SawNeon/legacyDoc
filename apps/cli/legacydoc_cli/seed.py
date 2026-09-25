@@ -1,11 +1,4 @@
-"""Create a demo account with sample data.
-
-Exists so the read and export endpoints return something before any LLM call
-has run, and so each developer on the team can spin up their own test account
-without touching someone else's.
-
-Everything written here is fixture data, not generated documentation.
-"""
+"""Create a demo account with sample data."""
 
 from __future__ import annotations
 

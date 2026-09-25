@@ -1,8 +1,4 @@
-"""JSON exporter.
-
-Machine format consumed by the VS Code extension to render CodeLens and the
-findings panel, so the schema has to stay stable.
-"""
+"""JSON exporter."""
 
 from __future__ import annotations
 

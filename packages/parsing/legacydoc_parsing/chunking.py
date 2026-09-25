@@ -1,13 +1,4 @@
-"""Group symbols into chunks that fit the prompt budget.
-
-Core rule: a symbol is never split. v1 cut every 150 lines and the writer,
-instructed to ignore incomplete definitions, silently dropped the remainder, so
-functions vanished from the documentation without any error.
-
-Cuts happen between symbols. A symbol larger than the budget becomes its own
-chunk and, if it still does not fit, is truncated with an explicit marker so
-the model knows it is seeing a fragment.
-"""
+"""Group symbols into chunks that fit the prompt budget."""
 
 from __future__ import annotations
 
@@ -16,7 +7,6 @@ from dataclasses import dataclass, field
 from legacydoc_parsing.symbols import ParsedFile, SymbolSpan
 
 CHARS_PER_TOKEN = 3.6
-"""Rough estimate for source code. Sizing only, never billing."""
 
 
 def estimate_tokens(text: str) -> int:
@@ -86,11 +76,7 @@ def build_chunks(
 
 
 def _file_header(parsed: ParsedFile) -> str:
-    """Header naming the file and its sibling symbols.
-
-    Without it an isolated chunk hides the fact that other functions exist in
-    the same file, and the model tends to invent relationships.
-    """
+    """Header naming the file and its sibling symbols."""
     names = ", ".join(symbol.name for symbol in parsed.symbols[:40]) or "nenhum"
 
     return (
@@ -134,12 +120,7 @@ def _make_oversized_chunk(index: int, symbol: SymbolSpan, header: str, budget: i
 
 
 def _fallback_line_chunks(parsed: ParsedFile, max_tokens_per_chunk: int) -> list[CodeChunk]:
-    """No recognised symbols: fall back to line-based cuts.
-
-    Happens with declaration-only files, unsupported grammars, or a failed
-    parse. Chunks are marked truncated so the writer knows the boundary may be
-    arbitrary.
-    """
+    """No recognised symbols: fall back to line-based cuts."""
     lines = parsed.source.split("\n")
     max_chars = int(max_tokens_per_chunk * CHARS_PER_TOKEN)
 

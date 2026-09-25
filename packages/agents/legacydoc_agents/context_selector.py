@@ -1,17 +1,4 @@
-"""Selection of the project context injected into prompts.
-
-Storing context entries is easy; what changes answer quality is picking the
-right ones per file within a token budget. Sending everything is expensive and
-dilutes the prompt, sending nothing yields the usual generic documentation.
-
-Criteria in order: a path glob matching the file, lexical overlap between the
-entry and the code, and the client-defined weight.
-
-An entry with neither a matching glob nor a single term in common with the file
-is dropped, whatever its weight. Weight ranks entries that are relevant; it is
-not a way to force an unrelated one into the prompt. Use a "**" glob to say an
-entry genuinely applies to every file.
-"""
+"""Selection of the project context injected into prompts."""
 
 from __future__ import annotations
 
@@ -108,7 +95,6 @@ def select_context(
     for candidate in candidates:
         matched_glob = _matches_glob(candidate.path_globs, file_path)
 
-        # An explicit glob that does not match is the client saying no.
         if candidate.path_globs and not matched_glob:
             continue
 
@@ -116,18 +102,13 @@ def select_context(
         overlap = len(code_terms & item_terms)
         coverage = overlap / max(len(item_terms), 1)
 
-        # Nothing in common with this file and nobody asked for it to be here.
-        # Weight alone must not smuggle an entry in: a note about the payroll
-        # module sitting in a prompt about stock reservation is noise, and
-        # diluting the prompt is what this selection exists to prevent. An
-        # entry that really does apply everywhere says so with a "**" glob.
         if not matched_glob and overlap == 0:
             continue
 
         score = overlap + coverage * 5 + (candidate.weight / 100.0)
 
         if matched_glob:
-            score += 25.0  # Direcionamento explicito vence relevancia lexical.
+            score += 25.0
 
         scored.append(ScoredContext(candidate, score, matched_glob))
 

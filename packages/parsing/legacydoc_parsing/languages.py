@@ -1,9 +1,4 @@
-"""Language detection from file extension.
-
-Each language name is the `tree-sitter-language-pack` identifier, a single
-package bundling over a hundred grammars. Adding a language costs one line
-rather than a new dependency.
-"""
+"""Language detection from file extension."""
 
 from __future__ import annotations
 
@@ -14,7 +9,6 @@ from pathlib import PurePosixPath
 @dataclass(frozen=True)
 class LanguageInfo:
     name: str
-    """Identifier used by tree-sitter-language-pack."""
     display_name: str
     line_comment: str
     block_comment: tuple[str, str] | None = None
@@ -49,22 +43,17 @@ LANGUAGES: dict[str, LanguageInfo] = {
     "verilog": LanguageInfo("verilog", "Verilog", "//", ("/*", "*/")),
     "fortran": LanguageInfo("fortran", "Fortran", "!", None),
     "commonlisp": LanguageInfo("commonlisp", "Common Lisp", ";", None),
-    # Extracao de simbolos verificada em tests/test_legacy_languages.py.
     "pascal": LanguageInfo("pascal", "Pascal / Delphi", "//", ("{", "}")),
     "vb": LanguageInfo("vb", "Visual Basic", "'", None),
     "ada": LanguageInfo("ada", "Ada", "--", None),
     "erlang": LanguageInfo("erlang", "Erlang", "%", None),
     "powershell": LanguageInfo("powershell", "PowerShell", "#", ("<#", "#>")),
     "tcl": LanguageInfo("tcl", "Tcl", "#", None),
-    # COBOL and Groovy load their grammar but yield no usable symbols through
-    # the generic extractor. Kept here so they are chunked by line rather
-    # than ignored outright.
     "cobol": LanguageInfo("cobol", "COBOL", "*", None),
     "groovy": LanguageInfo("groovy", "Groovy", "//", ("/*", "*/")),
 }
 
 _EXTENSION_MAP: dict[str, str] = {
-    # C / C++
     ".c": "c",
     ".h": "c",
     ".cpp": "cpp",
@@ -74,15 +63,12 @@ _EXTENSION_MAP: dict[str, str] = {
     ".hh": "cpp",
     ".hxx": "cpp",
     ".ipp": "cpp",
-    # JVM
     ".java": "java",
     ".kt": "kotlin",
     ".kts": "kotlin",
     ".scala": "scala",
     ".sc": "scala",
-    # .NET
     ".cs": "csharp",
-    # Web
     ".js": "javascript",
     ".jsx": "javascript",
     ".mjs": "javascript",
@@ -91,7 +77,6 @@ _EXTENSION_MAP: dict[str, str] = {
     ".mts": "typescript",
     ".cts": "typescript",
     ".tsx": "tsx",
-    # Scripting
     ".py": "python",
     ".pyi": "python",
     ".rb": "ruby",
@@ -102,25 +87,21 @@ _EXTENSION_MAP: dict[str, str] = {
     ".pm": "perl",
     ".r": "r",
     ".R": "r",
-    # Sistemas
     ".go": "go",
     ".rs": "rust",
     ".swift": "swift",
     ".m": "objc",
     ".mm": "objc",
     ".dart": "dart",
-    # Funcionais
     ".hs": "haskell",
     ".ex": "elixir",
     ".exs": "elixir",
     ".lisp": "commonlisp",
     ".cl": "commonlisp",
-    # Shell e dados
     ".sh": "bash",
     ".bash": "bash",
     ".zsh": "bash",
     ".sql": "sql",
-    # Legado / hardware
     ".f": "fortran",
     ".f90": "fortran",
     ".f95": "fortran",
@@ -129,35 +110,27 @@ _EXTENSION_MAP: dict[str, str] = {
     ".vhdl": "vhdl",
     ".v": "verilog",
     ".sv": "verilog",
-    # Pascal / Delphi
     ".pas": "pascal",
     ".dpr": "pascal",
     ".dfm": "pascal",
     ".lpr": "pascal",
     ".pp": "pascal",
-    # Visual Basic (VB6 e VB.NET)
     ".vb": "vb",
     ".bas": "vb",
     ".cls": "vb",
     ".frm": "vb",
-    # Ada
     ".ada": "ada",
     ".adb": "ada",
     ".ads": "ada",
-    # Erlang
     ".erl": "erlang",
     ".hrl": "erlang",
-    # PowerShell
     ".ps1": "powershell",
     ".psm1": "powershell",
-    # Tcl
     ".tcl": "tcl",
-    # COBOL (modo degradado: sem extracao de simbolos)
     ".cob": "cobol",
     ".cbl": "cobol",
     ".cpy": "cobol",
     ".ccp": "cobol",
-    # Groovy (modo degradado: gramatica nao modela classes/metodos)
     ".groovy": "groovy",
     ".gradle": "groovy",
 }

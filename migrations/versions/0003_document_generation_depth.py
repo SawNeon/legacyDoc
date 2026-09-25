@@ -1,9 +1,4 @@
-"""Record which analysis depth produced each document.
-
-Revision ID: 0003_document_depth
-Revises: 0002_reset_lockout
-Create Date: 2026-09-11
-"""
+"""Record which analysis depth produced each document."""
 
 from __future__ import annotations
 
@@ -19,9 +14,6 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    # server_default is required or ALTER TABLE fails on existing rows. Rows
-    # written before this column existed are labelled "basic": understating
-    # what a document received is safer than claiming an audit that never ran.
     op.add_column(
         "documents",
         sa.Column("depth", sa.String(length=20), nullable=False, server_default="basic"),

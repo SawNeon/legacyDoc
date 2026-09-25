@@ -1,20 +1,4 @@
-"""Painel de contas.
-
-Tres regras moldam este arquivo:
-
-Mostra metadado, nunca conteudo. O produto processa codigo-fonte de terceiros,
-e um painel que abre a documentacao de um cliente torna verdadeira a frase "a
-equipe le o codigo dos clientes". Restringir por desenho custa nada agora e e
-impossivel de desfazer depois.
-
-Toda acao e registrada. Sem isso, daqui a tres meses ninguem sabe por que uma
-conta esta no plano Team. E quando a cobranca entrar, o gateway passara a mandar
-o plano pelo webhook: uma troca feita na mao sem registro vira conflito
-silencioso entre o que a pessoa pagou e o que ela tem.
-
-Promover administrador nao e rota. Isso acontece so pela linha de comando, para
-que ganhar privilegio nao seja algo que se alcance por HTTP.
-"""
+"""Painel de contas."""
 
 from __future__ import annotations
 
@@ -51,11 +35,7 @@ def _inicio_do_mes() -> datetime:
 
 
 async def _metricas_por_conta(session: AsyncSession, ids: list[uuid.UUID]) -> dict[uuid.UUID, dict]:
-    """Uma consulta agregada por metrica, e nao uma por conta.
-
-    Buscar gasto e contagem dentro do laco da listagem seria uma ida ao banco
-    por linha; com cem contas na tela isso vira trezentas consultas.
-    """
+    """Uma consulta agregada por metrica, e nao uma por conta."""
     if not ids:
         return {}
 
@@ -86,8 +66,6 @@ async def _metricas_por_conta(session: AsyncSession, ids: list[uuid.UUID]) -> di
     for identificador, ultimo in ultimos.all():
         metricas[identificador]["last_job_at"] = ultimo
 
-    # A contagem do mes e separada da data do ultimo job: uma olha so o mes
-    # corrente, a outra precisa enxergar o historico inteiro.
     jobs_do_mes = await session.execute(
         select(Job.user_id, func.count(Job.id))
         .where(
@@ -249,11 +227,7 @@ async def change_status(
     admin: Principal = Depends(require_admin),
     session: AsyncSession = Depends(get_db),
 ) -> AdminAccountResponse:
-    """Ativa ou desativa a conta.
-
-    Desativar a propria conta e recusado: e um caminho sem volta pela interface,
-    porque a sessao seguinte nao passaria mais pela porta.
-    """
+    """Ativa ou desativa a conta."""
     usuario = await _conta_alvo(user_id, session)
 
     if usuario.id == admin.id and not payload.is_active:
@@ -267,8 +241,6 @@ async def change_status(
 
     usuario.is_active = payload.is_active
 
-    # Reativar limpa o bloqueio por tentativas: quem foi reativado a mao nao
-    # deve esbarrar num bloqueio antigo na primeira tentativa de entrar.
     if payload.is_active:
         usuario.failed_login_attempts = 0
         usuario.locked_until = None

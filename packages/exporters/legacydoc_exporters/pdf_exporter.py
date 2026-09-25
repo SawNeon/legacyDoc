@@ -1,10 +1,4 @@
-"""PDF exporter.
-
-Fixes three defects in the v1 generator: it read field names that never existed
-in the schema, so the return type never reached the PDF; it did not handle text
-outside latin-1, so a single non-Western identifier broke generation entirely;
-and it had no wrapping for long identifiers, which overflowed the margin.
-"""
+"""PDF exporter."""
 
 from __future__ import annotations
 
@@ -27,12 +21,7 @@ _SEVERITY_COLOR = {
 
 
 def _latin1_safe(text: str) -> str:
-    """Make text printable by the fpdf2 core fonts.
-
-    Replaces anything outside latin-1 rather than raising. Real CJK support
-    would require embedding a Unicode TTF, adding roughly 10 MB to the package;
-    until then degrading beats failing.
-    """
+    """Make text printable by the fpdf2 core fonts."""
     return text.encode("latin-1", errors="replace").decode("latin-1")
 
 
@@ -83,8 +72,6 @@ class PdfExporter(DocumentExporter):
         output = pdf.output()
 
         return bytes(output)
-
-    # ------------------------------------------------------------- blocos
 
     def _title_block(self, pdf: FPDF, documentation: FileDocumentation) -> None:
         pdf.set_font("helvetica", "B", 16)
@@ -186,7 +173,6 @@ class PdfExporter(DocumentExporter):
         if symbol.signature:
             pdf.set_font("courier", "", 8)
             pdf.set_text_color(20, 20, 20)
-            # wrapmode=CHAR keeps a space-less signature from overflowing the margin.
             pdf.multi_cell(
                 0, 4, _latin1_safe(symbol.signature), wrapmode="CHAR", new_x="LMARGIN", new_y="NEXT"
             )
@@ -214,8 +200,6 @@ class PdfExporter(DocumentExporter):
                     new_y="NEXT",
                 )
 
-        # v1 read a key absent from the schema, so the return never reached the
-        # PDF. These two fields are the correct ones.
         if symbol.return_type or symbol.return_description:
             pdf.set_font("helvetica", "B", 9)
             pdf.cell(0, 5, "Retorno:", new_x="LMARGIN", new_y="NEXT")

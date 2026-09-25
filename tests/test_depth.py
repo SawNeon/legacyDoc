@@ -1,9 +1,4 @@
-"""Generation depth: what the customer asked for, capped by what they pay for.
-
-The plan says how deep an account *may* go. The depth says how deep it *chose*
-to go on one job. Keeping the two apart is what lets someone on a paid plan
-sweep a whole legacy repository cheaply instead of abandoning the product.
-"""
+"""Generation depth: what the customer asked for, capped by what they pay for."""
 
 from __future__ import annotations
 
@@ -20,8 +15,6 @@ from legacydoc_core.plans import (
     resolve_depth,
 )
 from sqlalchemy import select
-
-# ------------------------------------------------------------------ dominio
 
 
 def test_each_depth_adds_one_agent_to_the_previous_one():
@@ -53,11 +46,7 @@ def test_each_plan_publishes_the_depths_it_can_pick(tier, expected):
 
 
 def test_asking_above_the_plan_is_capped_not_refused():
-    """A client that always sends the deepest option must keep working.
-
-    Refusing would force every caller to know the plan before composing the
-    request, which the VS Code extension has no good way to do offline.
-    """
+    """A client that always sends the deepest option must keep working."""
     assert resolve_depth(GenerationDepth.PRO, get_plan(PlanTier.FREE)) is GenerationDepth.BASIC
 
 
@@ -72,9 +61,6 @@ def test_omitting_the_depth_spends_everything_the_plan_allows():
 def test_an_unrecognised_value_falls_back_instead_of_crashing():
     """Stored job parameters are re-read long after they were written."""
     assert resolve_depth("turbo", get_plan(PlanTier.PRO)) is GenerationDepth.PRO
-
-
-# --------------------------------------------------------------------- http
 
 
 async def _register(client: AsyncClient) -> tuple[dict[str, str], str]:

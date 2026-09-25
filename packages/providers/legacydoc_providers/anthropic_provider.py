@@ -1,12 +1,4 @@
-"""Anthropic (Claude) adapter.
-
-Uses structured outputs through `messages.parse(output_format=...)`, which
-validates the response against the Pydantic model and returns `parsed_output`.
-
-Deliberately avoids forced tool use: it was the old way to extract JSON from
-Claude, but current models removed it and return 400. Structured outputs is the
-supported path.
-"""
+"""Anthropic (Claude) adapter."""
 
 from __future__ import annotations
 
@@ -54,7 +46,6 @@ class AnthropicProvider:
                 output_format=schema,
             )
 
-            # Safety classifiers can refuse with HTTP 200.
             if getattr(response, "stop_reason", None) == "refusal":
                 details = getattr(response, "stop_details", None)
                 category = getattr(details, "category", None)
@@ -94,11 +85,7 @@ class AnthropicProvider:
         )
 
     async def _complete_with_output_config(self, request: CompletionRequest, schema: type[T]):
-        """Fallback for SDKs without the `.parse()` helper.
-
-        `output_config.format` guarantees the first text block is schema-valid
-        JSON.
-        """
+        """Fallback for SDKs without the `.parse()` helper."""
         response = await self._client.messages.create(
             model=request.model,
             max_tokens=request.max_output_tokens,
@@ -119,11 +106,7 @@ class AnthropicProvider:
 
 
 def _user_blocks(request: CompletionRequest) -> list[dict]:
-    """Split the user turn so the stable prefix can carry a cache breakpoint.
-
-    Anthropic caches by prefix, so the cached block has to come first and stay
-    byte-identical between calls.
-    """
+    """Split the user turn so the stable prefix can carry a cache breakpoint."""
     if not request.cacheable_prefix:
         return [{"type": "text", "text": request.user}]
 

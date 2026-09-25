@@ -1,10 +1,4 @@
-"""FastAPI dependencies: authentication, plan and quotas.
-
-Two credential kinds share the `Authorization: Bearer` header. A session JWT
-serves the web front and expires within hours; a revocable API key serves the
-VS Code extension and CI, where a daily re-login inside the editor would be
-unusable.
-"""
+"""FastAPI dependencies: authentication, plan and quotas."""
 
 from __future__ import annotations
 
@@ -33,7 +27,6 @@ from legacydoc_core.settings import Settings, get_settings
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# auto_error=False so domain errors keep the shared response shape.
 _bearer = HTTPBearer(auto_error=False)
 
 
@@ -129,23 +122,11 @@ async def _user_from_api_key(token: str, session: AsyncSession) -> User:
 
 
 async def require_admin(principal: Principal = Depends(get_principal)) -> Principal:
-    """Acesso ao painel de contas.
-
-    Recusa chave de API de proposito, aceitando apenas sessao. Chave e uma
-    credencial longa, feita para ficar guardada em maquina de CI e no editor;
-    transformar isso em acesso administrativo significaria que um vazamento de
-    chave entrega o painel junto.
-
-    Responde 404, e nao 403, pelo mesmo motivo do resto da API: 403 confirmaria
-    para quem esta sondando que existe um painel neste caminho.
-    """
+    """Acesso ao painel de contas."""
     if principal.via_api_key or not principal.user.is_admin:
         raise NotFoundError("Recurso nao encontrado.")
 
     return principal
-
-
-# ------------------------------------------------------------------- cotas
 
 
 async def count_jobs_this_month(session: AsyncSession, user_id: uuid.UUID) -> int:
@@ -194,16 +175,7 @@ async def enforce_cost_budget(
     session: AsyncSession,
     settings: Settings,
 ) -> None:
-    """Block on real spend rather than job count.
-
-    The per-user ceiling stops one account from consuming the budget; the global
-    ceiling is the last line of defense for the card, since many accounts each
-    within their own limit can still add up beyond what the operator can pay.
-
-    Checked before enqueueing and never interrupting a running job, so spend can
-    overshoot slightly by the cost of a job already accepted. It is a brake,
-    not an exact fence.
-    """
+    """Block on real spend rather than job count."""
     global_spend = await global_spend_this_month(session)
 
     if global_spend >= settings.global_monthly_budget_usd:
@@ -233,11 +205,7 @@ async def enforce_cost_budget(
 
 
 async def enforce_job_quota(principal: Principal, session: AsyncSession) -> None:
-    """Block before enqueueing.
-
-    The monthly quota caps total cost; the concurrency limit stops one user
-    from occupying every worker.
-    """
+    """Block before enqueueing."""
     used = await count_jobs_this_month(session, principal.id)
 
     if used >= principal.plan.monthly_job_quota:
@@ -262,11 +230,7 @@ async def get_owned_project(
     principal: Principal,
     session: AsyncSession,
 ) -> Project:
-    """Load a project, ensuring it belongs to the caller.
-
-    Returns 404 rather than 403 on purpose: a 403 would reveal that the id
-    exists.
-    """
+    """Load a project, ensuring it belongs to the caller."""
     project = await session.get(Project, project_id)
 
     if project is None or project.owner_id != principal.id:

@@ -1,9 +1,4 @@
-"""Transactional email delivery.
-
-The console backend is the development default and makes the password reset
-flow work end to end without a configured provider: the link is written to the
-log. Switching to real delivery is a configuration change, not a code change.
-"""
+"""Transactional email delivery."""
 
 from __future__ import annotations
 

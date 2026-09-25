@@ -1,8 +1,4 @@
-"""Painel de contas: quem entra, o que vê e o que fica registrado.
-
-O painel é uma porta com privilégio, então a maior parte destes testes é sobre
-quem NÃO passa por ela.
-"""
+"""Painel de contas: quem entra, o que vê e o que fica registrado."""
 
 from __future__ import annotations
 
@@ -35,9 +31,6 @@ async def _id_of(session, email: str) -> uuid.UUID:
     return user.id
 
 
-# ---------------------------------------------------------------- a porta
-
-
 async def test_common_account_cannot_see_the_panel(client: AsyncClient):
     """404 e nao 403: 403 confirmaria que existe um painel neste caminho."""
     headers, _ = await _register(client)
@@ -51,11 +44,7 @@ async def test_the_panel_needs_credentials(client: AsyncClient):
 
 
 async def test_an_api_key_never_opens_the_panel(client: AsyncClient, session):
-    """Chave é credencial longa, guardada em CI e no editor.
-
-    Aceitá-la aqui significaria que um vazamento de chave entrega o painel
-    junto, e chave não expira como sessão.
-    """
+    """Chave é credencial longa, guardada em CI e no editor."""
     headers, email = await _register(client)
     await _promote(session, email)
 
@@ -70,9 +59,6 @@ async def test_an_api_key_never_opens_the_panel(client: AsyncClient, session):
 
     assert com_chave.status_code == 404
     assert com_sessao.status_code == 200
-
-
-# ---------------------------------------------------------------- a lista
 
 
 async def test_the_panel_lists_accounts_with_what_decides_an_action(client: AsyncClient, session):
@@ -97,12 +83,7 @@ async def test_the_panel_lists_accounts_with_what_decides_an_action(client: Asyn
 
 
 async def test_the_panel_never_exposes_document_content(client: AsyncClient, session):
-    """A regra que molda o painel inteiro.
-
-    O produto processa código-fonte de terceiros. Um painel que abre a
-    documentação de um cliente torna verdadeira a frase "a equipe lê o código
-    dos clientes", que passaria a ser obrigatória na política de privacidade.
-    """
+    """A regra que molda o painel inteiro."""
     headers, email = await _register(client)
     await _promote(session, email)
 
@@ -122,9 +103,6 @@ async def test_search_narrows_by_email(client: AsyncClient, session):
     ).json()
 
     assert [item["email"] for item in achados["items"]] == [outro]
-
-
-# ----------------------------------------------------------- troca de plano
 
 
 async def test_changing_a_plan_records_who_did_it_and_why(client: AsyncClient, session):
@@ -180,9 +158,6 @@ async def test_an_unknown_plan_is_refused(client: AsyncClient, session):
     )
 
     assert resposta.status_code == 422
-
-
-# -------------------------------------------------------------- ativacao
 
 
 async def test_disabling_an_account_blocks_its_session(client: AsyncClient, session):
@@ -256,14 +231,8 @@ async def test_acting_on_an_unknown_account_is_a_not_found(client: AsyncClient, 
     assert resposta.status_code == 404
 
 
-# ---------------------------------------------------------------- auditoria
-
-
 async def test_the_audit_survives_the_account_being_deleted(client: AsyncClient, session):
-    """Por isso os e-mails são copiados, e a chave estrangeira é SET NULL.
-
-    Um registro que some junto com a conta não serve de registro.
-    """
+    """Por isso os e-mails são copiados, e a chave estrangeira é SET NULL."""
     headers, admin_email = await _register(client)
     await _promote(session, admin_email)
     _, alvo = await _register(client)
@@ -296,12 +265,7 @@ async def test_the_audit_is_only_visible_to_admins(client: AsyncClient, session)
 
 
 async def test_me_says_whether_the_account_opens_the_panel(client: AsyncClient, session):
-    """O front decide por aqui se mostra o acesso.
-
-    Esconder o link nao e controle de acesso: o painel recusa por conta propria
-    quem nao for administrador. Isto existe para nao oferecer uma porta que a
-    pessoa vai bater e receber 404.
-    """
+    """O front decide por aqui se mostra o acesso."""
     headers, email = await _register(client)
 
     assert (await client.get("/v1/auth/me", headers=headers)).json()["is_admin"] is False

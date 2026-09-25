@@ -1,9 +1,4 @@
-"""Google Gemini adapter.
-
-Uses `response_mime_type="application/json"` with `response_schema`, Gemini's
-native structured mode. The `google-genai` SDK is synchronous underneath in
-several versions but exposes `client.aio` for async use.
-"""
+"""Google Gemini adapter."""
 
 from __future__ import annotations
 
@@ -69,8 +64,6 @@ class GeminiProvider:
 
         raw_text = getattr(response, "text", "") or ""
 
-        # `parsed` is only populated for a Pydantic response_schema; we pass raw
-        # JSON Schema, so validation happens here.
         value = parse_model_json(raw_text, schema, provider=_NAME)
 
         return StructuredResult(
@@ -83,7 +76,6 @@ class GeminiProvider:
         )
 
     async def aclose(self) -> None:
-        # The google-genai client holds no persistent session to close.
         return None
 
 

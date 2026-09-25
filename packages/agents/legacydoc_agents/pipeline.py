@@ -1,16 +1,4 @@
-"""Multi-agent orchestration.
-
-Replaces v1's LangGraph graph with an explicit async pipeline, which buys:
-
-- Real concurrency: a file's chunks run in parallel under a semaphore, where
-  v1 processed them serially.
-- Per-agent routing: each role picks its own provider and model, where v1 had a
-  fixed OpenAI client inside every agent.
-- Cost accounting: every call goes through the router, which records telemetry.
-- A review loop that works: in v1 the comparison was always false, so the
-  verifier ran on the most expensive model and its result was discarded without
-  rewriting anything. Here rewriting happens, and only for rejected symbols.
-"""
+"""Multi-agent orchestration."""
 
 from __future__ import annotations
 
@@ -53,12 +41,9 @@ class PipelineOptions:
     max_tokens_per_chunk: int = 6000
     chunk_concurrency: int = 6
     max_review_rounds: int = 1
-    """How many times the writer may rewrite after a verifier rejection."""
     generate_summary: bool = True
 
     depth: GenerationDepth = GenerationDepth.BASIC
-    """Which agents run. Defaults to the cheapest pass on purpose: a caller
-    that forgets to set it spends the least, not the most."""
 
 
 @dataclass
@@ -142,8 +127,6 @@ class DocumentationPipeline:
             )
 
         if invented_symbols:
-            # Surfaced deliberately: heavy invention in one file makes the rest
-            # of its documentation suspect too.
             result.warnings.append(
                 "Descartado(s) por nao existir(em) no codigo: "
                 + ", ".join(sorted(set(invented_symbols))[:10])
@@ -161,8 +144,6 @@ class DocumentationPipeline:
             result.documentation.summary = await self._run_summarizer(path, symbols, prompt_context)
 
         return result
-
-    # ------------------------------------------------------------- agentes
 
     async def _run_reader(self, parsed: ParsedFile, context: prompts.PromptContext) -> str:
         """Upfront diagnosis. A failure here is not fatal: the output is advisory."""
@@ -200,11 +181,7 @@ class DocumentationPipeline:
         path: str,
         symbol_index: SymbolIndex | None = None,
     ) -> tuple[list[SymbolDoc], list[FindingDraft], int, list[str]]:
-        """Run the writer, and the improver when the plan allows, across chunks.
-
-        A failing chunk does not sink the rest: the job delivers partial
-        documentation with a warning rather than nothing.
-        """
+        """Run the writer, and the improver when the plan allows, across chunks."""
         semaphore = asyncio.Semaphore(self._options.chunk_concurrency)
         wants_findings = self._options.depth.runs_improver
 
@@ -287,10 +264,6 @@ class DocumentationPipeline:
         *,
         path: str,
     ) -> ImproverOutput:
-        # Kind and owner are included because without them the model guesses.
-        # The first real run had it call a module-level function a method of
-        # the neighbouring class and suggest it use `self`, which would have
-        # broken the code had anyone followed the advice.
         hints = "\n".join(
             f"- {symbol.name}: {_describe_span(symbol)}, "
             f"linhas {symbol.line_start}-{symbol.line_end}, "
@@ -314,11 +287,7 @@ class DocumentationPipeline:
         path: str,
         context: prompts.PromptContext,
     ) -> None:
-        """Audit, then rewrite only the rejected symbols.
-
-        Rewriting the whole file over one bad symbol would burn tokens and risk
-        degrading what was already correct.
-        """
+        """Audit, then rewrite only the rejected symbols."""
         for round_number in range(self._options.max_review_rounds + 1):
             documentation_json = json.dumps(
                 [symbol.model_dump() for symbol in result.documentation.symbols],
@@ -329,9 +298,6 @@ class DocumentationPipeline:
                 verdict = await self._router.complete(
                     AgentRole.VERIFIER,
                     system=prompts.verifier_system(context),
-                    # The source is identical on every round while the generated
-                    # documentation changes, so it leads the prompt as the cached
-                    # prefix and is billed at a fraction from the second round on.
                     cacheable_prefix=prompts.verifier_source_block(
                         source[:MAX_AUDIT_CHARS], file_path=path
                     ),
@@ -436,8 +402,6 @@ class DocumentationPipeline:
 
         return result.value.summary
 
-    # ------------------------------------------------------------ apoio
-
     def _build_prompt_context(
         self,
         *,
@@ -462,18 +426,7 @@ class DocumentationPipeline:
     def _anchor_findings(
         self, findings: list[FindingDraft], chunk: CodeChunk
     ) -> tuple[list[FindingDraft], list[str]]:
-        """Give findings the same grounding the documented symbols already get.
-
-        Until the first real run this was missing, and it showed immediately:
-        both findings produced pointed at line ranges the symbol did not
-        occupy. A finding that sends the reader to the wrong line is worse than
-        no finding, because the reader trusts it and then distrusts the rest.
-
-        Line numbers come from the parser, never from the model. A finding
-        about a symbol the parser never saw is discarded, the same treatment an
-        invented symbol gets. A finding about the file as a whole is kept, but
-        loses its line range: nothing here can confirm it.
-        """
+        """Give findings the same grounding the documented symbols already get."""
         if not chunk.symbols:
             return findings, []
 
@@ -513,24 +466,10 @@ class DocumentationPipeline:
     def _enrich(
         self, symbols: list[SymbolDoc], chunk: CodeChunk, language: str
     ) -> tuple[list[SymbolDoc], list[str]]:
-        """Anchor model output to the AST, discarding what is not in the code.
-
-        Line numbers, complexity and parent class come from the parser rather
-        than the model: verifiable and free.
-
-        A symbol the parser never saw is discarded. Models occasionally invent
-        plausible functions, and before this they were stored as real
-        documentation with `line_start=0`. The ground truth is already in hand;
-        not using it wasted the cheapest defense against hallucination.
-
-        Returns the accepted symbols and the discarded names, which become a
-        warning.
-        """
+        """Anchor model output to the AST, discarding what is not in the code."""
         for symbol in symbols:
             symbol.language = symbol.language or language
 
-        # Without parser ground truth there is no way to tell invention from
-        # fact, so everything is kept and the caller is warned.
         if not chunk.symbols:
             return symbols, []
 
@@ -551,7 +490,6 @@ class DocumentationPipeline:
                 discarded.append(symbol.name)
                 continue
 
-            # Normalise to the name as written in the code.
             symbol.name = span.name
             symbol.line_start = span.line_start
             symbol.line_end = span.line_end
@@ -571,10 +509,7 @@ class DocumentationPipeline:
 
 
 def _dedupe_symbols(symbols: list[SymbolDoc]) -> list[SymbolDoc]:
-    """Drop duplicates, keeping the most complete entry.
-
-    A symbol can appear in two chunks when the header is resent.
-    """
+    """Drop duplicates, keeping the most complete entry."""
     best: dict[tuple[str, str | None], SymbolDoc] = {}
 
     for symbol in symbols:
@@ -602,7 +537,6 @@ def _spans_by_name(chunk: CodeChunk) -> dict[str, SymbolSpan]:
     for span in chunk.symbols:
         spans[span.name] = span
 
-        # The model returns Class.method while the parser stores method plus parent.
         if span.parent:
             spans[f"{span.parent}.{span.name}"] = span
             spans[f"{span.parent.rsplit('.', 1)[-1]}.{span.name}"] = span

@@ -1,10 +1,4 @@
-"""Suite fixtures.
-
-Tests run on SQLite through aiosqlite so no container is required. Important
-caveat: SQLite has no `FOR UPDATE SKIP LOCKED`, so the real production
-concurrency path is not exercised here. `test_queue.py` covers the optimistic
-fallback and documents the difference.
-"""
+"""Suite fixtures."""
 
 from __future__ import annotations
 
@@ -20,8 +14,6 @@ os.environ.setdefault("JWT_SECRET_KEY", "chave-de-teste-com-mais-de-32-caractere
 os.environ.setdefault("ALLOWED_ORIGINS", "http://localhost:5173")
 os.environ.setdefault("ENVIRONMENT", "test")
 os.environ.setdefault("MIN_PASSWORD_LENGTH", "10")
-# Every test call arrives from the same fake address, so a shared bucket
-# would make results depend on test order. test_ratelimit.py turns it back on.
 os.environ.setdefault("RATE_LIMIT_ENABLED", "false")
 
 from httpx import ASGITransport, AsyncClient  # noqa: E402
@@ -43,7 +35,6 @@ def settings() -> Settings:
 
 @pytest_asyncio.fixture
 async def engine():
-    # StaticPool mantem o mesmo :memory: entre conexoes da mesma sessao.
     from sqlalchemy.pool import StaticPool
 
     engine = create_async_engine(
@@ -52,8 +43,6 @@ async def engine():
         connect_args={"check_same_thread": False},
     )
 
-    # Sem isto o SQLite ignora chave estrangeira, e os testes nunca veriam um
-    # `ON DELETE` que a producao aplica.
     from legacydoc_core.db import _enforce_sqlite_foreign_keys
 
     _enforce_sqlite_foreign_keys(engine)
@@ -70,7 +59,6 @@ async def engine():
 async def session_factory(engine) -> async_sessionmaker[AsyncSession]:
     factory = async_sessionmaker(engine, expire_on_commit=False, autoflush=False)
 
-    # The API and worker resolve sessions through the module globals.
     db_module._engine = engine
     db_module._session_factory = factory
 
@@ -115,7 +103,6 @@ async def client(session_factory, settings) -> AsyncIterator[AsyncClient]:
 
     app = create_app(settings)
 
-    # Lifespan would create a real Postgres engine; tests inject SQLite.
     transport = ASGITransport(app=app)
 
     async with AsyncClient(transport=transport, base_url="http://testserver") as http:

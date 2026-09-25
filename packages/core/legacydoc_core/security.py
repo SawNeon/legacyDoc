@@ -1,9 +1,4 @@
-"""Passwords, JWT tokens and API keys.
-
-API keys exist for the VS Code extension: a 24 hour JWT would force a developer
-to sign in again every day inside the editor. The key is shown once at creation
-and stored only as a hash.
-"""
+"""Passwords, JWT tokens and API keys."""
 
 from __future__ import annotations
 
@@ -23,10 +18,6 @@ _password_hash = PasswordHash.recommended()
 
 API_KEY_PREFIX = "ldk_"
 _API_KEY_LOOKUP_LEN = 12
-"""Tamanho do prefixo indexado: 'ldk_' + 8 caracteres aleatorios."""
-
-
-# ------------------------------------------------------------------- senhas
 
 
 def hash_password(password: str) -> str:
@@ -57,9 +48,6 @@ def validate_password_strength(password: str, min_length: int) -> None:
 
     if password.isdigit() or password.isalpha():
         raise ValidationError("A senha deve misturar letras e numeros.")
-
-
-# --------------------------------------------------------------------- JWT
 
 
 @dataclass(frozen=True)
@@ -105,13 +93,9 @@ def decode_access_token(token: str, settings: Settings) -> TokenPayload:
     return TokenPayload(user_id=user_id, email=email)
 
 
-# --------------------------------------------------------------- chaves API
-
-
 @dataclass(frozen=True)
 class GeneratedApiKey:
     plaintext: str
-    """Shown to the user once. Never persisted."""
     prefix: str
     key_hash: str
 
@@ -128,12 +112,7 @@ def generate_api_key() -> GeneratedApiKey:
 
 
 def hash_api_key(plaintext: str) -> str:
-    """SHA-256 rather than argon2.
-
-    The key carries 256 bits of real entropy, so there is no human-password
-    brute force to defend against. Argon2 would add ~100ms to every extension
-    request, which authenticates on each call.
-    """
+    """SHA-256 rather than argon2."""
     return hashlib.sha256(plaintext.encode("utf-8")).hexdigest()
 
 
@@ -150,18 +129,12 @@ def looks_like_api_key(credential: str) -> bool:
 
 
 MAX_FAILED_LOGINS = 5
-"""Tentativas seguidas antes do bloqueio temporario."""
 
 LOCKOUT_MINUTES = 15
 
 
 def lockout_until(failed_attempts: int) -> datetime | None:
-    """How long the account stays locked, given consecutive failures.
-
-    Backoff grows from 15 minutes and caps at 24 hours. Slowing the attack down
-    is enough; locking forever would hand the attacker a denial of service
-    against the victim.
-    """
+    """How long the account stays locked, given consecutive failures."""
     if failed_attempts < MAX_FAILED_LOGINS:
         return None
 
@@ -175,7 +148,6 @@ def is_locked(locked_until_value: datetime | None) -> bool:
     if locked_until_value is None:
         return False
 
-    # SQLite returns naive datetimes; Postgres returns aware ones.
     referencia = (
         locked_until_value if locked_until_value.tzinfo else locked_until_value.replace(tzinfo=UTC)
     )
@@ -183,15 +155,12 @@ def is_locked(locked_until_value: datetime | None) -> bool:
     return referencia > datetime.now(UTC)
 
 
-# --------------------------------------------------- token de redefinicao
-
 RESET_TOKEN_TTL_MINUTES = 30
 
 
 @dataclass(frozen=True)
 class GeneratedResetToken:
     plaintext: str
-    """Travels in the emailed link. Never persisted."""
     token_hash: str
     expires_at: datetime
 

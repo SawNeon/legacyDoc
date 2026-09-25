@@ -1,7 +1,4 @@
-"""Safe zip extraction tests.
-
-Each test builds a genuinely malicious archive and asserts the attack fails.
-"""
+"""Safe zip extraction tests."""
 
 from __future__ import annotations
 

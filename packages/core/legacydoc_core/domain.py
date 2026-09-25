@@ -1,8 +1,4 @@
-"""Domain objects exchanged between parsing, agents and exporters.
-
-They are Pydantic models because they double as the JSON Schema for structured
-LLM output: one definition is both the agent contract and the response validator.
-"""
+"""Domain objects exchanged between parsing, agents and exporters."""
 
 from __future__ import annotations
 
@@ -73,9 +69,6 @@ class FileDocumentation(BaseModel):
     summary: str = ""
     symbols: list[SymbolDoc] = Field(default_factory=list)
     findings: list[FindingDraft] = Field(default_factory=list)
-
-
-# Modelos enxutos: quanto menor o schema, menor a chance do LLM alucinar campo.
 
 
 class WriterOutput(BaseModel):

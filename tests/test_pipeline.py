@@ -1,9 +1,4 @@
-"""Orchestrator and context selection tests.
-
-Covers v1's silent defect: the retry comparison was always false, so the
-verifier ran on the most expensive model in the pipeline and its result was
-discarded. No rewrite ever happened.
-"""
+"""Orchestrator and context selection tests."""
 
 from __future__ import annotations
 
@@ -99,11 +94,7 @@ async def _run(
     options: PipelineOptions | None = None,
     depth: GenerationDepth | None = None,
 ):
-    """Mirrors production: the depth is what was asked, capped by the plan.
-
-    Passing no depth means the caller wants everything the plan pays for,
-    which is what the API does when the request omits the field.
-    """
+    """Mirrors production: the depth is what was asked, capped by the plan."""
     plan = get_plan(plan_tier)
 
     pipeline = DocumentationPipeline(
@@ -269,12 +260,7 @@ async def test_findings_are_sorted_by_severity():
 
 
 async def test_finding_line_numbers_come_from_the_parser():
-    """The first real run produced findings pointing at the wrong lines.
-
-    A finding that sends the reader to the wrong place is worse than no
-    finding: they trust it, land somewhere unrelated, and then distrust the
-    rest of the document.
-    """
+    """The first real run produced findings pointing at the wrong lines."""
     router = ScriptedRouter(
         {
             AgentRole.READER: [_reader_ok()],
@@ -303,7 +289,6 @@ async def test_finding_line_numbers_come_from_the_parser():
     result = await _run(router, PlanTier.PRO)
     finding = result.documentation.findings[0]
 
-    # dividir ocupa as linhas 4 a 7 de SOURCE.
     assert (finding.line_start, finding.line_end) == (4, 7)
 
 
@@ -382,9 +367,6 @@ async def test_empty_file_returns_warning_not_crash():
     assert result.warnings
 
 
-# ---------------------------------------------------------- contexto
-
-
 def _candidate(**kwargs) -> ContextCandidate:
     defaults = {
         "id": "1",
@@ -431,11 +413,7 @@ def test_selection_respects_the_character_budget():
 
 
 def test_unrelated_context_is_dropped_whatever_its_weight():
-    """Weight ranks relevant entries; it must not force an unrelated one in.
-
-    A note about payroll sitting in a prompt about stock reservation is noise,
-    and diluting the prompt is exactly what this selection exists to prevent.
-    """
+    """Weight ranks relevant entries; it must not force an unrelated one in."""
     relevante = ContextCandidate(
         id="1",
         kind="domain_rule",
@@ -509,11 +487,7 @@ def test_render_context_labels_each_item_by_kind():
 
 
 async def test_invented_symbol_is_discarded():
-    """The parser knows which symbols exist; hallucination must not persist.
-
-    Without this filter an invented function became real documentation in the
-    database with line_start=0.
-    """
+    """The parser knows which symbols exist; hallucination must not persist."""
     router = ScriptedRouter(
         {
             AgentRole.READER: [_reader_ok()],
@@ -562,11 +536,7 @@ async def test_class_qualified_method_is_accepted():
 
 
 async def test_nothing_is_discarded_without_parser_ground_truth():
-    """A file whose grammar failed has no ground truth to compare against.
-
-    Discarding everything would leave the user with no documentation at all;
-    the right move is to accept and warn that nothing was verified.
-    """
+    """A file whose grammar failed has no ground truth to compare against."""
     router = ScriptedRouter(
         {
             AgentRole.READER: [_reader_ok()],
@@ -577,7 +547,6 @@ async def test_nothing_is_discarded_without_parser_ground_truth():
     pipeline = DocumentationPipeline(
         router, get_plan(PlanTier.FREE), PipelineOptions(generate_summary=False)
     )
-    # Constants only: the parser recognises no symbols.
     fonte = "\n".join(f"CONST_{i} = {i}" for i in range(50))
     result = await pipeline.run(
         path="consts.py", source=fonte, language=detect_language("consts.py")
@@ -587,11 +556,7 @@ async def test_nothing_is_discarded_without_parser_ground_truth():
 
 
 async def test_audit_sends_the_source_as_a_cacheable_prefix():
-    """The file is identical on every review round; the documentation is not.
-
-    Leading with the source lets the provider bill it at cache rates from the
-    second round on, and the verifier runs on the most expensive model.
-    """
+    """The file is identical on every review round; the documentation is not."""
     stubborn = VerifierOutput(
         approved=False,
         rejected_symbols=["somar"],

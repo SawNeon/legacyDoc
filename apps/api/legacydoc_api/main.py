@@ -1,10 +1,4 @@
-"""FastAPI application.
-
-The app only does HTTP: validate, authorise, read and write the database, and
-enqueue. All heavy work lives in the worker, which is what keeps the API
-responding in milliseconds under load. In v1 a single generate request held the
-event loop for minutes.
-"""
+"""FastAPI application."""
 
 from __future__ import annotations
 
@@ -31,7 +25,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-        # Lifespan also disposes the connection pool on shutdown.
         init_engine(resolved)
         logger.info("API iniciada no ambiente %s.", resolved.environment)
         try:
@@ -51,9 +44,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.state.settings = resolved
 
-    # Added before CORS on purpose: Starlette runs the last registered
-    # middleware first, so CORS stays outermost and a 429 still carries the
-    # headers the browser needs to show it as a real response.
     if resolved.rate_limit_enabled:
         app.add_middleware(RateLimitMiddleware, settings=resolved)
 
@@ -79,11 +69,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
 
 def _register_exception_handlers(app: FastAPI, settings: Settings) -> None:
-    """Map domain errors to HTTP in one consistent shape.
-
-    v1 answered every failure with the same opaque message, so a client could
-    not tell an exhausted quota from an invalid repository or a provider outage.
-    """
+    """Map domain errors to HTTP in one consistent shape."""
 
     @app.exception_handler(LegacyDocError)
     async def handle_domain_error(_: Request, exc: LegacyDocError) -> JSONResponse:
@@ -113,7 +99,6 @@ def _register_exception_handlers(app: FastAPI, settings: Settings) -> None:
     async def handle_unexpected(_: Request, exc: Exception) -> JSONResponse:
         logger.exception("Erro nao tratado.")
 
-        # Internal details stay hidden in production.
         message = (
             "Erro interno. Tente novamente."
             if settings.is_production
@@ -127,7 +112,6 @@ def _register_exception_handlers(app: FastAPI, settings: Settings) -> None:
 
 
 app = None
-"""Created on demand by `__main__` or by uvicorn through the factory."""
 
 
 def get_app() -> FastAPI:

@@ -1,10 +1,4 @@
-"""Generated documents and artifact downloads.
-
-Critical difference from v1: there is no `StaticFiles` here. v1 mounted the
-output directories publicly with deterministic filenames, so anyone could
-download any customer's documentation by guessing a name. Artifacts are now
-rendered on demand from the database, for the owner only.
-"""
+"""Generated documents and artifact downloads."""
 
 from __future__ import annotations
 
@@ -96,8 +90,6 @@ async def get_document(
         findings=(
             [_finding_to_response(item) for item in document.findings] if shows_findings else []
         ),
-        # Findings are stored even when the plan hides them, so an upgrade
-        # reveals prior analysis without reprocessing or re-billing tokens.
         findings_locked=bool(document.findings) and not shows_findings,
         depth=document.depth,
         created_at=document.created_at,
@@ -149,9 +141,6 @@ async def export_document(
             "Cache-Control": "private, no-store",
         },
     )
-
-
-# ------------------------------------------------------------------ apoio
 
 
 async def _owned_document(

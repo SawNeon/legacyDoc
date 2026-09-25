@@ -72,9 +72,6 @@ class JobProcessor:
             usage_sink=self._make_usage_sink(session, job),
         )
 
-        # Resolved here and not read straight from the parameters: a job can
-        # sit in the queue while the account changes plan, and the plan in
-        # force at execution time is the one that decides what gets paid for.
         depth = resolve_depth(params.get("depth"), plan)
 
         pipeline = DocumentationPipeline(
@@ -173,11 +170,7 @@ class JobProcessor:
             return outcome
         finally:
             cleanup_directory(extraction_dir)
-            # The upload only feeds this job; keeping it would accumulate disk
-            # and leave customer code sitting on the server.
             archive_path.unlink(missing_ok=True)
-
-    # ------------------------------------------------------------ entradas
 
     def _snippet_to_file(self, params: dict) -> RepoFile:
         import hashlib
@@ -222,7 +215,6 @@ class JobProcessor:
                     f"Arquivos vistos: {scan.total_files_seen}."
                 )
 
-            # The plan ceiling applies even when no paths were requested.
             files = scan.files[:plan_max_files]
 
             warnings: list[str] = []
@@ -242,10 +234,7 @@ class JobProcessor:
 
             return outcome
         finally:
-            # Always cleaned: v1 left a 101 MB orphaned clone behind.
             cleanup_directory(clone_dir)
-
-    # -------------------------------------------------------- processamento
 
     async def _document_files(
         self,
@@ -258,8 +247,6 @@ class JobProcessor:
     ) -> JobOutcome:
         context_items = await self._load_context(session, job.project_id)
 
-        # Parses everything up front: costs CPU and zero tokens, and lets the
-        # writer understand calls into other files instead of guessing.
         symbol_index = await asyncio.to_thread(self._build_index, files)
 
         logger.info(
@@ -273,9 +260,6 @@ class JobProcessor:
         created = 0
         warnings: list[str] = []
 
-        # A retry starts the job over, but files documented before the failure
-        # were already committed. Skipping them saves the tokens and avoids
-        # colliding with the unique (job, path) constraint.
         already_documented = await self._documented_paths(session, job)
 
         for index, repo_file in enumerate(files, start=1):
@@ -298,8 +282,6 @@ class JobProcessor:
                 f"Documentando {repo_file.path} ({index}/{total})",
             )
 
-            # A lost lease means another worker took this job; continuing would
-            # duplicate documents and bill tokens twice.
             if not alive:
                 logger.warning("Lease perdido no job %s; abortando.", job.id)
                 break
@@ -318,7 +300,6 @@ class JobProcessor:
 
             warnings.extend(f"{repo_file.path}: {item}" for item in result.warnings)
 
-            # Realimenta o symbol_index: arquivos processados depois passam a ver o
             symbol_index.attach_summaries(
                 repo_file.path,
                 {s.name: s.summary for s in result.documentation.symbols if s.summary},
@@ -327,7 +308,6 @@ class JobProcessor:
             self._persist(session, job, repo_file, result, depth=pipeline.depth)
             created += 1
 
-            # Commit per file so a late failure keeps the files already paid for.
             await session.commit()
 
         return JobOutcome(documents_created=created, warnings=warnings)
@@ -376,11 +356,7 @@ class JobProcessor:
             )
 
     def _build_index(self, files: list[RepoFile]) -> SymbolIndex:
-        """Monta o symbol_index de simbolos de todos os arquivos do job.
-
-        Sincrono e chamado em thread: o parsing e CPU-bound e travaria o
-        event loop do worker.
-        """
+        """Monta o symbol_index de simbolos de todos os arquivos do job."""
         symbol_index = SymbolIndex()
 
         for repo_file in files:
@@ -392,7 +368,6 @@ class JobProcessor:
             try:
                 symbol_index.add_file(parse_file(repo_file.path, repo_file.content, language))
             except Exception:
-                # The index is a quality improvement, not a requirement.
                 logger.warning("Falha ao indexar %s; seguindo.", repo_file.path)
 
         return symbol_index
@@ -419,8 +394,6 @@ class JobProcessor:
             )
             for item in rows
         ]
-
-    # ------------------------------------------------------------- apoio
 
     def _make_usage_sink(self, session: AsyncSession, job: Job):
         """Record telemetry for each LLM call, flushed with the file commit."""

@@ -1,14 +1,4 @@
-"""Language-agnostic symbol extraction with tree-sitter.
-
-Rather than maintaining one query per grammar, this exploits tree-sitter's
-naming convention: almost every grammar calls a function definition
-`function_definition`, `function_declaration`, `method_declaration` or
-`function_item`. Recognising that set covers dozens of languages with one
-implementation, and a new language usually works without changes.
-
-This replaces v1's fixed 150-line blocks, which split functions in half and led
-the writer to silently drop the incomplete remainder.
-"""
+"""Language-agnostic symbol extraction with tree-sitter."""
 
 from __future__ import annotations
 
@@ -38,8 +28,6 @@ FUNCTION_NODE_TYPES: frozenset[str] = frozenset(
         "local_function_statement",
         "function_signature",
         "external_declaration",
-        # Legacy grammars name definitions differently. In Ada and PowerShell
-        # the "function" node above is the keyword token, not the definition.
         "defProc",
         "function_clause",
         "subprogram_body",
@@ -139,7 +127,6 @@ class ParsedFile:
     source: str
     symbols: list[SymbolSpan] = field(default_factory=list)
     parse_failed: bool = False
-    """True when tree-sitter could not load the grammar."""
 
     @property
     def line_count(self) -> int:
@@ -154,11 +141,7 @@ def _get_parser(language: LanguageInfo):
 
 
 def parse_file(path: str, source: str, language: LanguageInfo) -> ParsedFile:
-    """Extract the meaningful symbols from a file.
-
-    When the grammar cannot load, returns `parse_failed=True` with an empty
-    list so the orchestrator treats the file as one block instead of failing.
-    """
+    """Extract the meaningful symbols from a file."""
     parsed = ParsedFile(path=path, language=language.name, source=source)
 
     try:
@@ -177,11 +160,7 @@ def parse_file(path: str, source: str, language: LanguageInfo) -> ParsedFile:
 
 
 def _collect(node, source_bytes: bytes, *, parent: str | None) -> list[SymbolSpan]:
-    """Walk the tree collecting functions, descending into containers for methods.
-
-    Does not descend into an already collected function: inner closures stay
-    part of the enclosing body, which is the boundary a reader expects.
-    """
+    """Walk the tree collecting functions, descending into containers for methods."""
     found: list[SymbolSpan] = []
 
     for child in node.children:
@@ -246,9 +225,6 @@ def _build_symbol(
 
     full_source = source_bytes[node.start_byte : node.end_byte].decode("utf-8", errors="replace")
 
-    # Containers contribute only their header: their methods are separate
-    # symbols, so including the body would duplicate code in the same chunk
-    # and double token cost for object-oriented files.
     source = full_source if include_body else _declaration_header(full_source)
 
     return SymbolSpan(
@@ -261,19 +237,12 @@ def _build_symbol(
         byte_end=node.end_byte,
         parent=parent,
         signature=_extract_signature(full_source),
-        # Complexidade ciclomatica de um container somaria a de todos os
-        # metodos, numero sem significado. So funcoes recebem a medida.
         complexity=_cyclomatic_complexity(node) if include_body else 0,
     )
 
 
 def _declaration_header(source: str) -> str:
-    """Take a container declaration without its method bodies.
-
-    Cuts at the nearest delimiter rather than the first of a priority list: in
-    Python, searching for a brace before a newline found one inside the body and
-    pulled the whole class back in.
-    """
+    """Take a container declaration without its method bodies."""
     candidates = [index for index in (source.find("{"), source.find("\n")) if index > 0]
 
     if not candidates:
@@ -283,11 +252,7 @@ def _declaration_header(source: str) -> str:
 
 
 def _node_name(node, source_bytes: bytes) -> str:
-    """Resolve the symbol name.
-
-    Tries the `name` field used by most grammars, then `declarator` for C and
-    C++ where the name nests inside it, and finally the first child identifier.
-    """
+    """Resolve the symbol name."""
     named = node.child_by_field_name("name")
 
     if named is not None:
@@ -311,9 +276,6 @@ def _node_name(node, source_bytes: bytes) -> str:
         if child.type in _IDENTIFIER_NODE_TYPES:
             return source_bytes[child.start_byte : child.end_byte].decode("utf-8", errors="replace")
 
-    # Some grammars nest the name one level down: in Pascal `defProc` wraps
-    # `declProc` and the identifier only appears inside. Reached only after
-    # everything above failed.
     return _shallow_identifier(node, source_bytes, depth=2)
 
 
@@ -334,11 +296,7 @@ def _shallow_identifier(node, source_bytes: bytes, *, depth: int) -> str:
 
 
 def _extract_signature(source: str) -> str:
-    """The leading line up to the body opener.
-
-    Purely textual, with no language interpretation: the model receives the
-    full body regardless.
-    """
+    """The leading line up to the body opener."""
     for terminator in ("{", ":", "=>", "\n"):
         index = source.find(terminator)
         if index > 0:
@@ -350,11 +308,7 @@ def _extract_signature(source: str) -> str:
 
 
 def _cyclomatic_complexity(node) -> int:
-    """Approximate cyclomatic complexity: one plus the branch points.
-
-    Computed by the parser rather than asked of the model. A deterministic,
-    free number beats a hallucinated estimate and feeds complexity findings.
-    """
+    """Approximate cyclomatic complexity: one plus the branch points."""
     count = 1
     stack = [node]
 

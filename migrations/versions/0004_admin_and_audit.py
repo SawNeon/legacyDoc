@@ -1,9 +1,4 @@
-"""Admin flag on users and the audit trail for account actions.
-
-Revision ID: 0004_admin_audit
-Revises: 0003_document_depth
-Create Date: 2026-09-23
-"""
+"""Admin flag on users and the audit trail for account actions."""
 
 from __future__ import annotations
 
@@ -19,9 +14,6 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    # server_default is required or ALTER TABLE fails on existing rows, and
-    # "false" is the only safe default: nobody becomes an administrator by
-    # migration. The first one is promoted from the command line.
     op.add_column(
         "users",
         sa.Column("is_admin", sa.Boolean(), nullable=False, server_default=sa.false()),
@@ -30,8 +22,6 @@ def upgrade() -> None:
     op.create_table(
         "admin_actions",
         sa.Column("id", sa.Uuid(), nullable=False),
-        # SET NULL, nao CASCADE: apagar a conta de quem agiu nao pode apagar o
-        # registro do que foi feito. Os e-mails ficam copiados por isso.
         sa.Column("actor_id", sa.Uuid(), nullable=True),
         sa.Column("actor_email", sa.String(length=320), nullable=False),
         sa.Column("target_user_id", sa.Uuid(), nullable=True),
@@ -51,9 +41,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
 
-    op.create_index(
-        "ix_admin_actions_target", "admin_actions", ["target_user_id", "created_at"]
-    )
+    op.create_index("ix_admin_actions_target", "admin_actions", ["target_user_id", "created_at"])
 
 
 def downgrade() -> None:
