@@ -237,18 +237,24 @@ texto vêm do modelo.
 
 ---
 
-## 3. Planos: `findings_locked` é o gancho de upgrade
+## 3. Planos: melhorias e `findings_locked`
 
-Os pontos de melhoria são **sempre gerados e gravados**, mas só retornam em plano
-que os libera. No plano Free:
+Os pontos de melhoria são gerados conforme a **profundidade** do job (`standard` ou
+`pro`) e gravados; só retornam em plano que os libera. Numa conta que caiu de um
+plano pago, os documentos antigos vêm assim:
 
 ```json
 { "findings": [], "findings_locked": true }
 ```
 
-`findings_locked: true` significa "existem N melhorias identificadas, mas seu plano
-não as exibe" — é o lugar certo para a extensão oferecer o upgrade. Quando o usuário
-faz upgrade, os findings aparecem **sem reprocessar** e sem custo novo de token.
+`findings_locked: true` significa "existem melhorias gravadas, mas seu plano atual
+não as exibe". Quando o usuário faz upgrade, elas aparecem **sem reprocessar** e sem
+custo novo de token.
+
+**Atenção:** uma conta Free não gera melhorias (a profundidade dela é limitada a
+`basic`), então para ela `findings_locked` vem `false` e `findings` vazio. O `true`
+só aparece em quem caiu de um plano pago. Para oferecer upgrade a quem está no Free,
+use `plan.available_depths` do `/v1/auth/me`, e não este campo.
 
 | Recurso | Free | Pro | Team |
 | :--- | :---: | :---: | :---: |
