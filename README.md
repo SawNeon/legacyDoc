@@ -123,8 +123,8 @@ o trabalho — um deploy não perde a requisição do cliente.
 **Sem LangGraph.** O pipeline é linear com fan-out sobre chunks. O grafo
 atrapalhava as três coisas que importam aqui: concorrência real
 (`asyncio.gather`), roteamento de provedor por agente e contabilidade de custo
-por chamada. O orquestrador em `packages/agents/pipeline.py` faz isso em ~350
-linhas legíveis.
+por chamada. O orquestrador em `packages/agents/pipeline.py` faz isso sem
+dependência de framework de grafo.
 
 **A fila mora no Postgres.** Um broker separado (Redis + Celery) resolveria o
 mesmo problema com mais uma peça para operar, monitorar e pagar. Com
@@ -138,13 +138,21 @@ em silêncio. Aqui o corte só acontece entre símbolos.
 **Complexidade é medida, não perguntada.** Complexidade ciclomática e números de
 linha vêm do parser. É determinístico, verificável e não custa token.
 
-**Findings são gravados mesmo em plano que não os mostra.** Assim um upgrade
-libera o que já foi analisado, sem reprocessar e sem cobrar de novo pelos tokens.
+**Ver as melhorias e gerá-las são permissões separadas.** Quem gera é a
+profundidade escolhida no job; quem mostra é o plano. Assim um upgrade revela o
+que já foi analisado, sem reprocessar e sem cobrar de novo pelos tokens. Uma
+conta Free não gera melhorias (a profundidade dela é limitada a `basic`), então
+o bloqueio só aparece em quem caiu de um plano pago.
 
 ## Documentação
 
-- [`docs/api-contract.md`](docs/api-contract.md) — guia para clientes, incluindo
-  a extensão do VS Code.
+- [`docs/como-funciona.md`](docs/como-funciona.md) — **comece por aqui**: cada fluxo
+  do sistema (login, planos, fila, worker, agentes, front) com arquivo e linha,
+  segurança e limitações conhecidas.
+- [`docs/api-contract.md`](docs/api-contract.md) — contrato dos endpoints.
+- [`docs/guia-extensao.md`](docs/guia-extensao.md) — passo a passo da extensão do
+  VS Code: login, chave de API e envio da pasta do projeto.
+- [`docs/deploy.md`](docs/deploy.md) e [`docs/custos.md`](docs/custos.md).
 - [`docs/openapi.json`](docs/openapi.json) — spec gerada do código, para codegen.
 - [`docs/migracao-v1.md`](docs/migracao-v1.md) — o que mudou em relação à v1.
 
@@ -157,4 +165,8 @@ libera o que já foi analisado, sem reprocessar e sem cobrar de novo pelos token
       `packages/providers/legacydoc_providers/catalog.py` — estão marcados
       `verified=False` e alimentam o faturamento.
 - [ ] Backup do volume do Postgres: ele guarda usuários, jobs e documentos.
-- [ ] Rate limit por IP nas rotas de auth (ainda não implementado).
+- [x] Rate limit por IP (aplicação e nginx). Atrás da Cloudflare, exige
+      `infra/nginx-cloudflare-realip.conf`.
+- [ ] Verificação de e-mail e SMTP, validação do destino de webhook e `/docs`
+      fechado em produção. A lista completa está em
+      [`docs/como-funciona.md`](docs/como-funciona.md#11-limitações-conhecidas).
