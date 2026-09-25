@@ -29,3 +29,6 @@ node_modules/
 # Sobras de comando mal digitado no shell (ex.: `git show --stat` sem o `s`).
 how *
 how-*
+
+# Configuracao local de ferramentas de editor/IA
+.claude/
