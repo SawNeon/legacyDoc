@@ -242,6 +242,8 @@ class Job(Base, TimestampMixin):
 
     webhook_url: Mapped[str | None] = mapped_column(String(500))
 
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
     documents: Mapped[list[Document]] = relationship(
         back_populates="job", cascade="all, delete-orphan"
     )

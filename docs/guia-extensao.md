@@ -482,6 +482,7 @@ async function acompanhar(id: string, progress: vscode.Progress<{ message: strin
 `status`: `queued` → `running` → `succeeded` | `failed` | `cancelled`. O
 `progress_message` é real (`"Documentando src/auth.ts (3/12)"`), então mostre-o.
 Cancelar com `DELETE /v1/jobs/{id}` só funciona enquanto o status é `queued`.
+Para tirar um job terminado do histórico, use `DELETE /v1/jobs/{id}/history`.
 
 Em `429`, espere o `Retry-After` (segundos) em vez de insistir.
 

@@ -235,6 +235,20 @@ GET /v1/documents/{document_id}
 não do LLM — são confiáveis para posicionar CodeLens e diagnostics. Os campos de
 texto vêm do modelo.
 
+### Cancelar e excluir do histórico
+
+São duas rotas diferentes:
+
+| Rota | Quando | Resposta |
+|---|---|---|
+| `DELETE /v1/jobs/{id}` | Cancela um job ainda `queued` | `200` com o job `cancelled`; `409` se já começou |
+| `DELETE /v1/jobs/{id}/history` | Exclui um job terminado (`succeeded`, `failed` ou `cancelled`) | `204`; `409` se ainda está `queued` ou `running` |
+
+A exclusão apaga de verdade os documentos e as melhorias do job, e o código enviado
+(o trecho ou o `.zip`). Depois dela, `GET /v1/jobs/{id}` e os documentos devolvem
+`404`, e o job some de `GET /v1/jobs`. **Excluir não devolve cota:** o job continua
+contando no limite mensal do plano.
+
 ---
 
 ## 3. Planos: melhorias e `findings_locked`
@@ -330,7 +344,7 @@ Todos os erros têm o mesmo formato:
 | 401 | `authentication_error` | Chave inválida/revogada → pedir nova chave |
 | 402 | `quota_exceeded` | Cota ou recurso de plano → oferecer upgrade, mostrar `message` |
 | 404 | `not_found` | Recurso inexistente **ou de outro usuário** |
-| 409 | `conflict` | Ex.: cancelar job que já terminou |
+| 409 | `conflict` | Ex.: cancelar job que já terminou, ou excluir um que ainda roda |
 | 422 | `validation_error` | Extensão não suportada, URL inválida, corpo malformado |
 | 429 | `rate_limited` | Backoff exponencial |
 | 502 | `provider_error` | Todos os provedores de LLM falharam; o job já retentou |

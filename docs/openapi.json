@@ -973,6 +973,48 @@
         }
       }
     },
+    "/v1/jobs/{job_id}/history": {
+      "delete": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Delete From History",
+        "description": "Remove a finished job and its documents from the history.",
+        "operationId": "delete_from_history_v1_jobs__job_id__history_delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/documents": {
       "get": {
         "tags": [

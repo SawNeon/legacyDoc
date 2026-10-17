@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
+from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Body, Depends, File, Form, Query, UploadFile, status
@@ -15,7 +17,7 @@ from legacydoc_core.queue import cancel_job, enqueue
 from legacydoc_core.repository import validate_repo_url
 from legacydoc_core.settings import Settings
 from legacydoc_parsing.languages import detect_language
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from legacydoc_api.deps import (
@@ -182,7 +184,7 @@ async def list_jobs(
     offset: int = Query(default=0, ge=0),
     job_status: str | None = Query(default=None, alias="status"),
 ) -> JobListResponse:
-    filters = [Job.user_id == principal.id]
+    filters = [Job.user_id == principal.id, Job.deleted_at.is_(None)]
 
     if job_status:
         filters.append(Job.status == job_status)
@@ -241,10 +243,38 @@ async def cancel(
     return _to_response(job, 0)
 
 
+@router.delete("/{job_id}/history", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_from_history(
+    job_id: uuid.UUID,
+    principal: Principal = Depends(get_principal),
+    session: AsyncSession = Depends(get_db),
+) -> None:
+    """Remove a finished job and its documents from the history."""
+    job = await _owned_job(job_id, principal, session)
+
+    if not JobStatus(job.status).is_terminal:
+        raise ConflictError(
+            "O job ainda esta em andamento. Cancele ou aguarde terminar antes de excluir."
+        )
+
+    await session.execute(delete(Document).where(Document.job_id == job.id))
+
+    archive_path = (job.params or {}).get("archive_path")
+
+    if archive_path:
+        Path(archive_path).unlink(missing_ok=True)
+
+    job.params = {}
+    job.webhook_url = None
+    job.error_message = None
+    job.progress_message = None
+    job.deleted_at = datetime.now(UTC)
+
+
 async def _owned_job(job_id: uuid.UUID, principal: Principal, session: AsyncSession) -> Job:
     job = await session.get(Job, job_id)
 
-    if job is None or job.user_id != principal.id:
+    if job is None or job.user_id != principal.id or job.deleted_at is not None:
         raise NotFoundError("Job nao encontrado.")
 
     return job
