@@ -101,6 +101,8 @@ pytest -q
 ruff check .
 ```
 
+No front: `npm test` em `Front/LegacyDocFront`.
+
 Os testes rodam em SQLite e não gastam nenhum token: os provedores de LLM são
 substituídos por dublês.
 

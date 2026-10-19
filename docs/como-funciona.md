@@ -49,7 +49,7 @@ Três decisões explicam quase tudo:
 | `packages/agents` | Pipeline dos agentes, prompts, seleção de contexto | `core`, `parsing`, `providers` |
 | `packages/providers` | OpenAI, Anthropic, Gemini atrás da mesma interface, roteador | `core` |
 | `packages/exporters` | Markdown, PDF, JSON | `core` |
-| `tests` | 255 testes | tudo |
+| `tests` | 297 testes de backend; 41 no front (`npm test`) | tudo |
 
 Regra de dependência: **`core` não importa ninguém**, e nenhum módulo de domínio
 importa FastAPI (`packages/core/legacydoc_core/errors.py`). Por isso os erros de
@@ -454,9 +454,16 @@ inteiros: eles trazem o conteúdo enviado e o caminho do arquivo no disco do ser
 autenticação e `Cache-Control: private, no-store`. Não existe URL pública de arquivo:
 na v1 o PDF era acessível por quem adivinhasse o nome.
 
+`DELETE /v1/jobs/{id}/history` (`delete_from_history`) apaga os documentos, as
+melhorias e o código enviado de um job **terminado**, mas mantém a linha do job com
+`deleted_at`. Isso é proposital: o job continua contando na cota mensal, então
+excluir não devolve cota, e o gasto em `usage_records` também fica. Job em andamento
+dá 409, job alheio ou já excluído dá 404, e o zip que sobrou em disco também sai.
+No front é o botão **Excluir** do histórico, com confirmação em dois passos.
+
 ---
 
-## 9. O front (`Front/test/LegacyDocFront`)
+## 9. O front (`Front/LegacyDocFront`)
 
 ### 9.1 Do clique ao resultado
 
@@ -541,12 +548,13 @@ decisão antes de abrir para o público.
 
 ## 12. Onde estão os testes
 
-255 testes em `tests/` (SQLite em memória; `test_queue_postgres.py` roda contra um
+297 testes em `tests/` (SQLite em memória; `test_queue_postgres.py` roda contra um
 Postgres real quando disponível).
 
 | Arquivo | Garante |
 | :--- | :--- |
 | `test_api.py` | Cadastro, login, bloqueio, isolamento entre contas, cotas |
+| `test_history.py` | Exclusão do histórico: some do histórico, apaga documentos e código, não devolve cota nem gasto |
 | `test_admin.py` | Painel: só admin, motivo obrigatório, auditoria, chave de API recusada |
 | `test_queue.py`, `test_queue_postgres.py` | Prioridade, lease, retry com espera, reaper, concorrência real |
 | `test_worker_integration.py` | Da fila ao documento, sem gastar token (roteador substituído) |
@@ -557,5 +565,12 @@ Postgres real quando disponível).
 | `test_ratelimit.py` | Janela deslizante, cabeçalhos, IP por proxy |
 | `test_parsing.py`, `test_legacy_languages.py`, `test_symbol_index.py` | 36 linguagens, símbolos, índice |
 | `test_providers.py` | Cadeia de reserva, custo, cache |
+
+No front (`Front/LegacyDocFront`, `npm test`, Vitest), 41 testes:
+
+| Arquivo | Garante |
+| :--- | :--- |
+| `services/upload.test.ts` | Filtro de pasta, caminhos no zip, limites, truncamento, validação de `.zip` |
+| `services/api.test.ts` | Exclusão (204, 404, 409, 401), troca de conta, acompanhamento do job e erros |
 
 Rodar tudo: `python -m pytest`. Qualidade: `ruff check apps tests` e `ruff format --check`.

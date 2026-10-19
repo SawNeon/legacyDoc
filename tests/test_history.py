@@ -6,7 +6,7 @@ import uuid
 
 from httpx import AsyncClient
 from legacydoc_api.deps import count_jobs_this_month
-from legacydoc_core.models import Document, Finding, Job, JobStatus, JobType, User
+from legacydoc_core.models import Document, Finding, Job, JobStatus, JobType, UsageRecord, User
 from sqlalchemy import func, select
 
 SEGREDO = "senha_do_banco = 'nao-guarde'"
@@ -186,3 +186,48 @@ async def test_deleting_removes_a_leftover_upload(client: AsyncClient, session, 
 
     assert response.status_code == 204
     assert not archive.exists()
+
+
+async def test_deleting_requires_authentication(client: AsyncClient):
+    response = await client.delete(f"/v1/jobs/{uuid.uuid4()}/history")
+
+    assert response.status_code == 401
+
+
+async def test_deleting_works_with_an_api_key(client: AsyncClient, session):
+    headers, _ = await _register(client)
+    key = (await client.post("/v1/auth/api-keys", json={"name": "vscode"}, headers=headers)).json()[
+        "api_key"
+    ]
+    job_id, _ = await _finished_job(client, session, headers)
+
+    response = await client.delete(
+        f"/v1/jobs/{job_id}/history", headers={"Authorization": f"Bearer {key}"}
+    )
+
+    assert response.status_code == 204
+
+
+async def test_deleting_keeps_the_recorded_spend(client: AsyncClient, session):
+    headers, email = await _register(client)
+    job_id, _ = await _finished_job(client, session, headers)
+    session.add(
+        UsageRecord(
+            user_id=await _user_id(session, email),
+            job_id=uuid.UUID(job_id),
+            agent="writer",
+            provider="openai",
+            model="gpt-4o-mini",
+            input_tokens=10,
+            output_tokens=10,
+            cost_usd=0.25,
+            latency_ms=1,
+            succeeded=True,
+        )
+    )
+    await session.commit()
+
+    await client.delete(f"/v1/jobs/{job_id}/history", headers=headers)
+
+    me = (await client.get("/v1/auth/me", headers=headers)).json()
+    assert me["spent_this_month_usd"] == 0.25
