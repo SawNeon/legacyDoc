@@ -174,6 +174,8 @@ function getAuthHeaders(): Record<string, string> {
 }
 
 async function handleResponse<T>(response: Response): Promise<T> {
+  if (response.status === 204) return undefined as T;
+
   const contentType = response.headers.get("content-type");
 
   const data = contentType?.includes("application/json")
@@ -209,6 +211,12 @@ async function post<T>(path: string, body: unknown): Promise<T> {
       headers: { "Content-Type": "application/json", ...getAuthHeaders() },
       body: JSON.stringify(body),
     })
+  );
+}
+
+async function remove(path: string): Promise<void> {
+  await handleResponse<unknown>(
+    await fetch(`${API_BASE_URL}${path}`, { method: "DELETE", headers: getAuthHeaders() })
   );
 }
 
@@ -255,6 +263,10 @@ export async function createRepositoryJob(params: {
 
 export async function getJob(jobId: string) {
   return get<Job>(`/v1/jobs/${jobId}`);
+}
+
+export async function deleteJobRecord(jobId: string) {
+  return remove(`/v1/jobs/${jobId}/record`);
 }
 
 export async function listJobs(limit = 50) {

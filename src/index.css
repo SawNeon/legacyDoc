@@ -683,6 +683,16 @@ body.light .form-box input {
   min-width: 100px;
 }
 
+.btn-danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+
+.btn-danger:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
 .empty-history {
   justify-content: center;
   text-align: center;

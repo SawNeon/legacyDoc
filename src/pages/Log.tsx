@@ -2,6 +2,7 @@ import Navbar from "../components/Navbar";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  deleteJobRecord,
   documentToResult,
   downloadArtifact,
   exportPath,
@@ -19,6 +20,8 @@ const ROTULO_DE_STATUS: Record<string, string> = {
   failed: "Falhou",
   cancelled: "Cancelado",
 };
+
+const STATUS_FINAIS = ["succeeded", "failed", "cancelled"];
 
 const ROTULO_DE_NIVEL: Record<string, string> = {
   basic: "Básico",
@@ -44,6 +47,8 @@ export default function Log() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [abrindo, setAbrindo] = useState<string | null>(null);
+  const [confirmando, setConfirmando] = useState<string | null>(null);
+  const [excluindo, setExcluindo] = useState<string | null>(null);
 
   const buscar = useCallback(
     (aplicar: (lista: Job[] | null, erro: string | null) => void) => {
@@ -117,6 +122,20 @@ export default function Log() {
       alert(error instanceof Error ? error.message : "Não foi possível abrir o resultado.");
     } finally {
       setAbrindo(null);
+    }
+  }
+
+  async function excluir(job: Job) {
+    setExcluindo(job.id);
+
+    try {
+      await deleteJobRecord(job.id);
+      setJobs((atuais) => atuais.filter((item) => item.id !== job.id));
+      setConfirmando(null);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Não foi possível excluir a análise.");
+    } finally {
+      setExcluindo(null);
     }
   }
 
@@ -219,6 +238,35 @@ export default function Log() {
                   >
                     Markdown
                   </button>
+
+                  {STATUS_FINAIS.includes(job.status) &&
+                    (confirmando === job.id ? (
+                      <>
+                        <button
+                          className="btn btn-danger"
+                          disabled={excluindo === job.id}
+                          onClick={() => excluir(job)}
+                        >
+                          {excluindo === job.id ? "Excluindo..." : "Confirmar exclusão"}
+                        </button>
+
+                        <button
+                          className="btn btn-secondary"
+                          disabled={excluindo === job.id}
+                          onClick={() => setConfirmando(null)}
+                        >
+                          Cancelar
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        className="btn btn-secondary"
+                        aria-label={`Excluir a análise de ${job.source ?? "origem desconhecida"}`}
+                        onClick={() => setConfirmando(job.id)}
+                      >
+                        Excluir
+                      </button>
+                    ))}
                 </div>
               </article>
             ))}
