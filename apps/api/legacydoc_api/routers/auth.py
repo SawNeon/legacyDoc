@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Request, status
 from legacydoc_core.billing import load_pricing
 from legacydoc_core.db import get_db
 from legacydoc_core.email import get_email_sender, render_password_reset
@@ -14,6 +14,7 @@ from legacydoc_core.errors import AuthenticationError, ConflictError, NotFoundEr
 from legacydoc_core.models import ApiKey, PasswordResetToken, User
 from legacydoc_core.security import (
     MAX_FAILED_LOGINS,
+    RESET_COOLDOWN_SECONDS,
     RESET_TOKEN_TTL_MINUTES,
     create_access_token,
     generate_api_key,
@@ -145,10 +146,19 @@ async def me(
     )
 
 
+async def _deliver_reset_email(settings: Settings, *, to: str, subject: str, body: str) -> None:
+    """Runs after the response, so a slow or broken mail server cannot reveal the account."""
+    try:
+        await get_email_sender(settings).send(to=to, subject=subject, body=body)
+    except Exception:
+        logger.exception("Falha ao enviar o e-mail de redefinicao de senha.")
+
+
 @router.post("/password-reset/request", status_code=status.HTTP_202_ACCEPTED)
 async def request_password_reset(
     payload: PasswordResetRequest,
     request: Request,
+    background: BackgroundTasks,
     session: AsyncSession = Depends(get_db),
     settings: Settings = Depends(get_app_settings),
 ) -> dict[str, str]:
@@ -156,7 +166,7 @@ async def request_password_reset(
     email = normalize_email(payload.email)
     user = (await session.execute(select(User).where(User.email == email))).scalar_one_or_none()
 
-    if user is not None and user.is_active:
+    if user is not None and user.is_active and not await _reset_requested_recently(session, user):
         await session.execute(
             update(PasswordResetToken)
             .where(
@@ -178,12 +188,16 @@ async def request_password_reset(
         )
 
         frontend = settings.frontend_base_url.rstrip("/")
-        reset_url = f"{frontend}/nova-senha?token={generated.plaintext}"
+        reset_url = f"{frontend}/nova-senha#token={generated.plaintext}"
         subject, body = render_password_reset(
             reset_url=reset_url, ttl_minutes=RESET_TOKEN_TTL_MINUTES
         )
 
-        await get_email_sender(settings).send(to=user.email, subject=subject, body=body)
+        await session.commit()
+
+        background.add_task(
+            _deliver_reset_email, settings, to=user.email, subject=subject, body=body
+        )
 
     return {
         "message": (
@@ -225,12 +239,33 @@ async def confirm_password_reset(
     if user is None or not user.is_active:
         raise AuthenticationError("Link invalido ou ja utilizado.")
 
+    now = datetime.now(UTC)
+
+    claimed = await session.execute(
+        update(PasswordResetToken)
+        .where(PasswordResetToken.id == reset_token.id, PasswordResetToken.used_at.is_(None))
+        .values(used_at=now)
+    )
+
+    if claimed.rowcount == 0:
+        raise AuthenticationError("Link invalido ou ja utilizado.")
+
     user.password_hash = hash_password(payload.new_password)
+    user.password_changed_at = now
 
     user.failed_login_attempts = 0
     user.locked_until = None
 
-    reset_token.used_at = datetime.now(UTC)
+    await session.execute(
+        update(ApiKey)
+        .where(ApiKey.user_id == user.id, ApiKey.revoked_at.is_(None))
+        .values(revoked_at=now)
+    )
+    await session.execute(
+        update(PasswordResetToken)
+        .where(PasswordResetToken.user_id == user.id, PasswordResetToken.used_at.is_(None))
+        .values(used_at=now)
+    )
 
     return _token_for(user, settings)
 
@@ -304,6 +339,25 @@ async def revoke_api_key(
         raise NotFoundError("Chave nao encontrada.")
 
     key.revoked_at = datetime.now(UTC)
+
+
+async def _reset_requested_recently(session: AsyncSession, user: User) -> bool:
+    """True while a link sent moments ago is still fresh, so the address is not flooded."""
+    window_start = datetime.now(UTC) + timedelta(
+        minutes=RESET_TOKEN_TTL_MINUTES, seconds=-RESET_COOLDOWN_SECONDS
+    )
+
+    recent = await session.execute(
+        select(PasswordResetToken.id)
+        .where(
+            PasswordResetToken.user_id == user.id,
+            PasswordResetToken.used_at.is_(None),
+            PasswordResetToken.expires_at > window_start,
+        )
+        .limit(1)
+    )
+
+    return recent.first() is not None
 
 
 def _token_for(user: User, settings: Settings) -> TokenResponse:

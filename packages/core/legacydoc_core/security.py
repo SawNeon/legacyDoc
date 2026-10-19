@@ -54,6 +54,7 @@ def validate_password_strength(password: str, min_length: int) -> None:
 class TokenPayload:
     user_id: str
     email: str
+    issued_at: int = 0
 
 
 def create_access_token(user_id: str, email: str, settings: Settings) -> str:
@@ -90,7 +91,7 @@ def decode_access_token(token: str, settings: Settings) -> TokenPayload:
     if not user_id or not email:
         raise AuthenticationError("Token incompleto.")
 
-    return TokenPayload(user_id=user_id, email=email)
+    return TokenPayload(user_id=user_id, email=email, issued_at=int(payload.get("iat", 0)))
 
 
 @dataclass(frozen=True)
@@ -156,6 +157,8 @@ def is_locked(locked_until_value: datetime | None) -> bool:
 
 
 RESET_TOKEN_TTL_MINUTES = 30
+
+RESET_COOLDOWN_SECONDS = 60
 
 
 @dataclass(frozen=True)

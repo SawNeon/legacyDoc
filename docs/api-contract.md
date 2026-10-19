@@ -477,6 +477,20 @@ Respostas de sucesso trazem `X-RateLimit-Limit` e `X-RateLimit-Remaining`. O pol
 a cada 2 a 3 segundos cabe folgado na faixa de leitura; **obedeça o `Retry-After`** em
 vez de insistir, porque insistir só prolonga o bloqueio.
 
+### Redefinição de senha
+
+| Rota | Faz |
+| :--- | :--- |
+| `POST /v1/auth/password-reset/request` com `{"email"}` | Envia o link. **Sempre 202** com a mesma mensagem, exista a conta ou não |
+| `POST /v1/auth/password-reset/confirm` com `{"token", "new_password"}` | Define a senha e devolve uma sessão nova (200) |
+
+O link do e-mail tem o formato `<app>/nova-senha#token=...` e vale 30 minutos, uma vez.
+Pedir de novo em menos de 60 s não envia outro e-mail. A troca de senha **encerra todas as
+sessões anteriores** (`401` "Sessão encerrada pela troca de senha") e **revoga as chaves de
+API** da conta: a extensão deve tratar esse 401 pedindo login de novo, como já faz para
+chave revogada. Senha fraca responde 422 sem gastar o link; link inválido, usado ou
+expirado responde 401.
+
 ## 10.1 Saldo de créditos
 
 O cliente paga um preço fixo, vê um **saldo em reais** e a API bloqueia (402) quando

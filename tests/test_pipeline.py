@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 
+import pytest
 from legacydoc_agents import DocumentationPipeline, PipelineOptions
 from legacydoc_agents.context_selector import (
     ContextCandidate,
@@ -355,6 +356,59 @@ async def test_a_file_level_finding_is_kept_without_a_line_range():
     assert finding.title == "Arquivo sem testes"
     assert finding.line_start is None
     assert finding.line_end is None
+
+
+class _DownRouter:
+    async def complete(self, role, **kwargs):
+        from legacydoc_core.errors import ProviderError
+
+        raise ProviderError("Todos os provedores falharam para o papel writer.")
+
+
+async def test_a_file_where_every_block_failed_is_an_error_not_an_empty_document():
+    """The provider outage used to end as a succeeded job holding a document with nothing in it."""
+    from legacydoc_core.errors import ProviderError
+
+    pipeline = DocumentationPipeline(_DownRouter(), get_plan(PlanTier.FREE))
+
+    with pytest.raises(ProviderError):
+        await pipeline.run(path="calc.py", source=SOURCE, language=detect_language("calc.py"))
+
+
+async def test_a_file_where_only_some_blocks_failed_keeps_the_partial_result():
+    def function(number: int) -> str:
+        lines = [f"    x = x + {i}" for i in range(40)]
+
+        return "\n".join([f"def f{number}(x):", *lines, "    return x", "", ""])
+
+    source = "".join(function(number) for number in range(3))
+
+    class FailsOnTheFirstBlock:
+        async def complete(self, role, *, user, schema, **kwargs):
+            from legacydoc_core.errors import ProviderError
+
+            if role == AgentRole.WRITER:
+                if "def f0(" in user:
+                    raise ProviderError("falhou")
+                value = WriterOutput(symbols=[_symbol("f2")])
+            else:
+                value = _reader_ok()
+
+            return StructuredResult(
+                value=value, provider="fake", model="m", usage=Usage(1, 1), latency_ms=1
+            )
+
+    pipeline = DocumentationPipeline(
+        FailsOnTheFirstBlock(),
+        get_plan(PlanTier.FREE),
+        PipelineOptions(generate_summary=False, max_tokens_per_chunk=200),
+    )
+
+    result = await pipeline.run(path="big.py", source=source, language=detect_language("big.py"))
+
+    assert (result.chunks_failed, result.chunks_processed) == (1, 1)
+    assert [symbol.name for symbol in result.documentation.symbols] == ["f2"]
+    assert any("falharam" in warning for warning in result.warnings)
 
 
 async def test_empty_file_returns_warning_not_crash():

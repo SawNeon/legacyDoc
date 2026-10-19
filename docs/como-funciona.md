@@ -49,7 +49,7 @@ Três decisões explicam quase tudo:
 | `packages/agents` | Pipeline dos agentes, prompts, seleção de contexto | `core`, `parsing`, `providers` |
 | `packages/providers` | OpenAI, Anthropic, Gemini atrás da mesma interface, roteador | `core` |
 | `packages/exporters` | Markdown, PDF, JSON | `core` |
-| `tests` | 394 testes de backend; 73 no front (`npm test`) | tudo |
+| `tests` | 438 testes de backend; 82 no front (`npm test`) | tudo |
 
 Regra de dependência: **`core` não importa ninguém**, e nenhum módulo de domínio
 importa FastAPI (`packages/core/legacydoc_core/errors.py`). Por isso os erros de
@@ -132,6 +132,44 @@ Erro inesperado vira 500 sem vazar detalhes em produção (`main.py`).
    quando há exceção; sem o commit explícito o contador nunca persistiria e o
    bloqueio jamais dispararia. Já foi um bug real.
 5. Sucesso → zera o contador e devolve um JWT de 24 h (`_token_for`, ).
+
+### 2.1.1 Redefinição de senha (`routers/auth.py`)
+
+```
+POST /password-reset/request ──> e-mail com link ──> /nova-senha#token=... ──> POST /password-reset/confirm
+```
+
+**Pedido.** A resposta é **sempre a mesma** (202), exista a conta ou não, e o envio roda
+**depois** da resposta (`BackgroundTasks`). Por isso um servidor de e-mail lento ou fora do
+ar não muda nem o tempo nem o resultado: se mudasse, viraria um detector de quem tem
+conta. O token é gravado e **confirmado no banco antes** do e-mail sair, então o link já
+funciona quando chega. Falha de envio vai para o log, sem o token.
+
+**Intervalo mínimo.** Se um link enviado há menos de 60 s ainda vale, o pedido não envia
+outro (a resposta continua igual). Sem isso, alguém dispararia dezenas de e-mails para o
+endereço de uma vítima. Um link novo cancela o anterior.
+
+**O link** vale 30 minutos e traz o token no **fragmento** (`#token=`), não na query. O
+fragmento não vai ao servidor, então não cai no log de acesso do nginx nem no cabeçalho
+`Referer`. O front lê o token, guarda em memória e **tira da URL** na hora. Links antigos
+com `?token=` ainda funcionam. O banco guarda só o **hash** do token.
+
+**Confirmação.** Valida a senha **antes** de gastar o link (senha fraca não queima o link),
+confere validade e conta ativa, e só então **consome o token de forma atômica**
+(`UPDATE ... WHERE used_at IS NULL`): duas abas confirmando ao mesmo tempo, só uma passa.
+
+**O que a troca encerra.** Quem teve a conta invadida e troca a senha precisa perder o
+acesso do invasor, então a confirmação:
+
+- grava `users.password_changed_at`, e `_user_from_jwt` recusa qualquer sessão emitida
+  **antes** desse instante ("Sessão encerrada pela troca de senha");
+- **revoga todas as chaves de API** da conta (a extensão pede login de novo, o que gera
+  uma chave nova);
+- cancela os outros links pendentes;
+- zera o bloqueio por tentativas, porque provar acesso ao e-mail desfaz o bloqueio que o
+  próprio ataque causou.
+
+A sessão devolvida pela confirmação é nova e continua valendo.
 
 ### 2.2 Duas credenciais no mesmo cabeçalho (`deps.py`)
 
@@ -599,7 +637,7 @@ decisão antes de abrir para o público.
 | 3 | **Cotas checadas antes de enfileirar, sem trava.** Duas requisições simultâneas passam pela contagem. | Pode passar um job da concorrência | Contar dentro da mesma transação com `SELECT ... FOR UPDATE` na linha do usuário |
 | 4 | **Rate limit em memória do processo.** Cada réplica da API tem a sua contagem. | Com várias réplicas o limite efetivo multiplica | Hoje há 1 réplica. Com mais, mover para Redis ou para o nginx |
 | 5 | **Webhook sem validação de destino** (`runner.py`). | SSRF: um usuário Pro/Team aponta para a rede interna | Aplicar a mesma lista/validação do clone, resolver DNS e bloquear IP privado |
-| 6 | **Sem verificação de e-mail e sem SMTP em produção.** | Cadastro com e-mail de terceiro; redefinição de senha não chega | Configurar SMTP e confirmar e-mail antes de liberar jobs |
+| 6 | **Sem verificação de e-mail no cadastro.** O SMTP de produção está configurado, mas o envio nunca foi exercitado de ponta a ponta. | Cadastro com e-mail de terceiro | Confirmar e-mail antes de liberar jobs e testar um envio real |
 | 7 | **`/docs` aberto em produção.** | Expõe o mapa da API | Desligar ou proteger fora de desenvolvimento |
 | 8 | **Sem tela de chaves de API no front.** | Só se gera a chave por API/extensão | Tela "Chaves" em Configurações |
 | 9 | **O leitor roda também no `basic`.** | Uma chamada barata a mais por arquivo, fora da tabela de custo | Documentar ou pular no `basic` |
@@ -612,12 +650,13 @@ decisão antes de abrir para o público.
 
 ## 12. Onde estão os testes
 
-394 testes em `tests/` (SQLite em memória; `test_queue_postgres.py` roda contra um
+438 testes em `tests/` (SQLite em memória; `test_queue_postgres.py` roda contra um
 Postgres real quando disponível).
 
 | Arquivo | Garante |
 | :--- | :--- |
 | `test_api.py` | Cadastro, login, bloqueio, isolamento entre contas, cotas |
+| `test_password_reset.py` | E-mail e link, intervalo mínimo, falha de envio, uso único e simultâneo, sessões e chaves encerradas pela troca |
 | `test_history.py` | Exclusão do histórico: some do histórico, apaga documentos e código, não devolve cota nem gasto |
 | `test_admin.py` | Painel: só admin, motivo obrigatório, auditoria, chave de API recusada |
 | `test_queue.py`, `test_queue_postgres.py` | Prioridade, lease, retry com espera, reaper, concorrência real |
@@ -631,7 +670,7 @@ Postgres real quando disponível).
 | `test_parsing.py`, `test_legacy_languages.py`, `test_symbol_index.py` | 36 linguagens, símbolos, índice |
 | `test_providers.py` | Cadeia de reserva, custo, cache |
 
-No front (`Front/LegacyDocFront`, `npm test`, Vitest), 73 testes:
+No front (`Front/LegacyDocFront`, `npm test`, Vitest), 82 testes:
 
 | Arquivo | Garante |
 | :--- | :--- |

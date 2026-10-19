@@ -118,6 +118,12 @@ class DocumentationPipeline:
             chunks, prompt_context, reader_notes, path=path, symbol_index=symbol_index
         )
 
+        if failed == len(chunks):
+            raise ProviderError(
+                "A IA nao respondeu para nenhum bloco deste arquivo. "
+                "Tente de novo em alguns minutos."
+            )
+
         result.chunks_processed = len(chunks) - failed
         result.chunks_failed = failed
 

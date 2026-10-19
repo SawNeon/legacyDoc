@@ -94,6 +94,13 @@ async def _user_from_jwt(token: str, session: AsyncSession, settings: Settings) 
     if user is None:
         raise AuthenticationError("Usuario nao encontrado.")
 
+    if user.password_changed_at is not None:
+        changed_at = user.password_changed_at
+        changed_at = changed_at if changed_at.tzinfo else changed_at.replace(tzinfo=UTC)
+
+        if payload.issued_at < int(changed_at.timestamp()):
+            raise AuthenticationError("Sessao encerrada pela troca de senha. Entre novamente.")
+
     return user
 
 

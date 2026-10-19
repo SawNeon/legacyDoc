@@ -106,6 +106,8 @@ class User(Base, TimestampMixin):
 
     locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
+    password_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
     api_keys: Mapped[list[ApiKey]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )

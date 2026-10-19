@@ -361,3 +361,39 @@ async def test_a_retried_job_resumes_instead_of_documenting_again(
 
     documents = (await session.execute(select(Document))).scalars().all()
     assert len(documents) == 1
+
+
+async def test_a_provider_outage_fails_the_job_instead_of_storing_an_empty_document(
+    session, pro_user, settings, monkeypatch
+):
+    from legacydoc_core.errors import ProviderError
+    from legacydoc_worker.runner import Worker
+
+    class DownRouter:
+        def __init__(self, usage_sink=None) -> None:
+            self.closed = False
+
+        async def complete(self, role, **kwargs):
+            raise ProviderError("Todos os provedores falharam para o papel writer.")
+
+        async def aclose(self) -> None:
+            self.closed = True
+
+    monkeypatch.setattr(
+        "legacydoc_worker.processor.ProviderRouter.from_settings",
+        classmethod(lambda cls, settings, **kwargs: DownRouter(kwargs.get("usage_sink"))),
+    )
+    queued_id = (await _queue_snippet_job(session, pro_user)).id
+
+    worker = Worker(settings)
+    claimed = await claim_job(session, worker_id="w1", lease_seconds=300)
+    await session.commit()
+    await worker._execute(claimed.id, "w1")
+
+    session.expire_all()
+    job = await session.get(Job, queued_id)
+
+    assert job.status == JobStatus.FAILED
+    assert job.error_code == "no_documents"
+    assert "nenhum bloco" in job.error_message
+    assert (await session.execute(select(Document))).scalars().all() == []
