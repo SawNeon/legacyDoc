@@ -575,6 +575,28 @@ async def test_zip_upload_enqueues_job(client: AsyncClient, session):
     assert job.params["archive_path"].endswith(".zip")
 
 
+async def test_cancelling_an_upload_removes_the_zip_from_disk(client: AsyncClient, session):
+    from pathlib import Path
+
+    headers, _ = await _register(client)
+    conteudo = _build_zip_bytes({"src/app.py": b"x = 1"})
+    job_id = (
+        await client.post(
+            "/v1/jobs/upload",
+            headers=headers,
+            files={"file": ("projeto.zip", conteudo, "application/zip")},
+        )
+    ).json()["id"]
+    job = await session.get(Job, uuid.UUID(job_id))
+    archive = Path(job.params["archive_path"])
+    assert archive.is_file()
+
+    response = await client.delete(f"/v1/jobs/{job_id}", headers=headers)
+
+    assert response.status_code == 200
+    assert not archive.exists(), "a cancelled upload must not leave customer code on the server"
+
+
 async def test_upload_requires_authentication(client: AsyncClient):
     response = await client.post(
         "/v1/jobs/upload",

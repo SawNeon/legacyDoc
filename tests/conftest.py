@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import tempfile
 import uuid
 from collections.abc import AsyncIterator
 
@@ -15,6 +16,9 @@ os.environ.setdefault("ALLOWED_ORIGINS", "http://localhost:5173")
 os.environ.setdefault("ENVIRONMENT", "test")
 os.environ.setdefault("MIN_PASSWORD_LENGTH", "10")
 os.environ.setdefault("RATE_LIMIT_ENABLED", "false")
+_SCRATCH = tempfile.mkdtemp(prefix="legacydoc-tests-")
+os.environ.setdefault("UPLOAD_DIR", os.path.join(_SCRATCH, "uploads"))
+os.environ.setdefault("TMP_DIR", os.path.join(_SCRATCH, "tmp"))
 
 from httpx import ASGITransport, AsyncClient  # noqa: E402
 from legacydoc_core import db as db_module  # noqa: E402

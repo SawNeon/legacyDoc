@@ -238,6 +238,11 @@ async def cancel(
     if not await cancel_job(session, job_id=job_id):
         raise ConflictError("O job ja saiu da fila e nao pode mais ser cancelado.")
 
+    archive_path = (job.params or {}).get("archive_path")
+
+    if archive_path:
+        Path(archive_path).unlink(missing_ok=True)
+
     await session.refresh(job)
 
     return _to_response(job, 0)

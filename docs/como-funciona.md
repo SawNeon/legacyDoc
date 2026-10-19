@@ -49,7 +49,7 @@ Três decisões explicam quase tudo:
 | `packages/agents` | Pipeline dos agentes, prompts, seleção de contexto | `core`, `parsing`, `providers` |
 | `packages/providers` | OpenAI, Anthropic, Gemini atrás da mesma interface, roteador | `core` |
 | `packages/exporters` | Markdown, PDF, JSON | `core` |
-| `tests` | 438 testes de backend; 82 no front (`npm test`) | tudo |
+| `tests` | 439 testes de backend; 82 no front (`npm test`) | tudo |
 
 Regra de dependência: **`core` não importa ninguém**, e nenhum módulo de domínio
 importa FastAPI (`packages/core/legacydoc_core/errors.py`). Por isso os erros de
@@ -378,6 +378,9 @@ Multipart com `file`, `project_id`, `output_language`, `depth`.
 4. Vazio → 422. **A assinatura decide, não o `Content-Type`**: `looks_like_zip`
    (`archive.py`) confere os bytes `PK`.
 5. Se qualquer passo falha, o arquivo parcial é apagado.
+   O zip também é apagado quando o job é **cancelado** na fila, quando é excluído do
+   histórico e quando o worker termina de usá-lo (`finally`); nenhum caminho deixa código
+   de cliente parado no disco do servidor.
 6. O job guarda **só o caminho** do zip. **A extração acontece no worker**, porque
    fazê-la aqui devolveria à API o trabalho pesado que a v2 existe para tirar dela.
 
@@ -650,7 +653,7 @@ decisão antes de abrir para o público.
 
 ## 12. Onde estão os testes
 
-438 testes em `tests/` (SQLite em memória; `test_queue_postgres.py` roda contra um
+439 testes em `tests/` (SQLite em memória; `test_queue_postgres.py` roda contra um
 Postgres real quando disponível).
 
 | Arquivo | Garante |
