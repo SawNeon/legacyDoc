@@ -69,7 +69,7 @@ afterEach(() => {
 });
 
 describe("deleteJobRecord", () => {
-  it("chama DELETE em /record com o token e resolve no 204 de corpo vazio", async () => {
+  it("chama DELETE em /history com o token e resolve no 204 de corpo vazio", async () => {
     setAuthToken("tok");
     fetchSimulado.mockResolvedValue(
       new Response(null, { status: 204, headers: { "content-type": "application/json" } })
@@ -78,7 +78,7 @@ describe("deleteJobRecord", () => {
     await expect(deleteJobRecord("abc")).resolves.toBeUndefined();
 
     const [url, opcoes] = fetchSimulado.mock.calls[0];
-    expect(url).toMatch(/\/v1\/jobs\/abc\/record$/);
+    expect(url).toMatch(/\/v1\/jobs\/abc\/history$/);
     expect(opcoes.method).toBe("DELETE");
     expect(opcoes.headers.Authorization).toBe("Bearer tok");
   });

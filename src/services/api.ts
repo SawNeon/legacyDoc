@@ -266,7 +266,7 @@ export async function getJob(jobId: string) {
 }
 
 export async function deleteJobRecord(jobId: string) {
-  return remove(`/v1/jobs/${jobId}/record`);
+  return remove(`/v1/jobs/${jobId}/history`);
 }
 
 export async function listJobs(limit = 50) {
