@@ -1,15 +1,22 @@
 import Navbar from "../components/Navbar";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { confirmPasswordReset, setAuthToken } from "../services/api";
+import { readResetToken } from "../services/resetToken";
 
 const SENHA_MINIMA = 10;
 
 export default function NovaSenha() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const token = searchParams.get("token") ?? "";
+  const location = useLocation();
+  const [token] = useState(() => readResetToken(location.hash, location.search));
+
+  useEffect(() => {
+    if (location.hash || location.search) {
+      navigate(location.pathname, { replace: true });
+    }
+  }, [location.hash, location.search, location.pathname, navigate]);
 
   const [senha, setSenha] = useState("");
   const [confirmacao, setConfirmacao] = useState("");
