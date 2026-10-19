@@ -6,8 +6,13 @@ import {
   documentToResult,
   followJob,
   getAuthToken,
+  getBilling,
   getJob,
+  getUsage,
+  grantCredits,
   listJobs,
+  updateBillingSettings,
+  updatePlanPricing,
   setAuthToken,
   type DocumentDetail,
   type DocumentSummary,
@@ -305,5 +310,62 @@ describe("documentToResult", () => {
     expect(resultado.documentation![0].name).toBe("f");
     expect(resultado.documentation![0].return_type).toBe("int");
     expect(resultado.summary).toBeUndefined();
+  });
+});
+
+describe("credito e precos", () => {
+  it("getUsage le o saldo da conta", async () => {
+    setAuthToken("tok");
+    fetchSimulado.mockResolvedValue(resposta(200, { credits_remaining_brl: 87.4, percent_used: 27 }));
+
+    const uso = await getUsage();
+
+    expect(uso.credits_remaining_brl).toBe(87.4);
+    expect(fetchSimulado.mock.calls[0][0]).toMatch(/\/v1\/usage$/);
+  });
+
+  it("getBilling usa a rota do painel", async () => {
+    fetchSimulado.mockResolvedValue(resposta(200, { plans: [] }));
+
+    await getBilling();
+
+    expect(fetchSimulado.mock.calls[0][0]).toMatch(/\/v1\/admin\/billing$/);
+  });
+
+  it("updateBillingSettings envia so o que mudou, com o motivo", async () => {
+    fetchSimulado.mockResolvedValue(resposta(200, {}));
+
+    await updateBillingSettings({ fx_rate_brl_per_usd: 5.5 }, "dolar subiu");
+
+    const [url, opcoes] = fetchSimulado.mock.calls[0];
+    expect(url).toMatch(/\/v1\/admin\/billing\/settings$/);
+    expect(opcoes.method).toBe("PATCH");
+    expect(JSON.parse(opcoes.body)).toEqual({ fx_rate_brl_per_usd: 5.5, reason: "dolar subiu" });
+  });
+
+  it("updatePlanPricing aponta para o plano certo", async () => {
+    fetchSimulado.mockResolvedValue(resposta(200, {}));
+
+    await updatePlanPricing("pro", { price_brl: 120 }, "reajuste");
+
+    expect(fetchSimulado.mock.calls[0][0]).toMatch(/\/v1\/admin\/billing\/plans\/pro$/);
+  });
+
+  it("grantCredits envia o valor pago ou a cortesia", async () => {
+    fetchSimulado.mockResolvedValue(resposta(201, { credits_brl: 60 }));
+
+    await grantCredits("u1", { price_brl: 60 }, "recarga paga");
+
+    const [url, opcoes] = fetchSimulado.mock.calls[0];
+    expect(url).toMatch(/\/v1\/admin\/accounts\/u1\/credits$/);
+    expect(JSON.parse(opcoes.body)).toEqual({ price_brl: 60, reason: "recarga paga" });
+  });
+
+  it("mostra a mensagem da API quando a regra recusa o valor", async () => {
+    fetchSimulado.mockResolvedValue(resposta(422, { message: "Nenhum valor mudou." }));
+
+    await expect(updatePlanPricing("pro", {}, "sem mudanca")).rejects.toThrow(
+      "Nenhum valor mudou."
+    );
   });
 });

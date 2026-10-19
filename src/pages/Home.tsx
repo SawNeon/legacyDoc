@@ -9,6 +9,7 @@ import {
   type CurrentUser,
 } from "../services/api";
 import { useRevelar } from "../hooks/useRevelar";
+import SaldoCredito from "../components/SaldoCredito";
 import UploadPicker from "../components/UploadPicker";
 import type { PreparedUpload } from "../services/upload";
 
@@ -174,9 +175,6 @@ export default function Home() {
   }
 
   const depths = account?.plan.available_depths ?? [];
-  const remaining = account
-    ? account.plan.monthly_cost_limit_usd - account.spent_this_month_usd
-    : null;
 
   return (
     <>
@@ -369,10 +367,11 @@ export default function Home() {
           {account && (
             <p className="home-quota">
               Plano <strong>{account.plan.display_name}</strong> · até{" "}
-              {account.plan.max_files_per_job} arquivos por análise · restam{" "}
-              <strong>US$ {remaining?.toFixed(2)}</strong> neste mês
+              {account.plan.max_files_per_job} arquivos por análise
             </p>
           )}
+
+          {account && <SaldoCredito />}
         </section>
       </main>
     </>

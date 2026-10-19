@@ -2543,3 +2543,263 @@ body.light .admin-plano.plano-team {
   background: var(--primary);
   transition: width 200ms var(--ease);
 }
+
+/* 30. SALDO DO CLIENTE */
+
+.saldo {
+  width: min(560px, 100%);
+  margin: 18px auto 0;
+  padding: 14px 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  text-align: left;
+}
+
+.saldo-topo {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 0.9rem;
+}
+
+.saldo-topo small {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.saldo-barra {
+  height: 8px;
+  margin: 10px 0 8px;
+  border-radius: 999px;
+  background: var(--card-dark);
+  overflow: hidden;
+}
+
+.saldo-barra-cheia {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--primary);
+  transition: width 300ms var(--ease);
+}
+
+.saldo-rodape {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.saldo[data-estado="alerta"] {
+  border-color: var(--warning);
+}
+
+.saldo[data-estado="alerta"] .saldo-barra-cheia {
+  background: var(--warning);
+}
+
+.saldo[data-estado="esgotado"] {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.saldo[data-estado="esgotado"] .saldo-barra-cheia {
+  background: var(--danger);
+}
+
+/* 31. PRECOS E CREDITOS NO PAINEL */
+
+.admin-abas {
+  display: flex;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.admin-aba {
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.admin-aba[aria-selected="true"] {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: var(--text);
+}
+
+.admin-precos {
+  margin-top: 22px;
+  text-align: left;
+}
+
+.admin-precos h3 {
+  margin: 26px 0 12px;
+}
+
+.preco-global {
+  margin: 8px 0 0;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.preco-planos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.preco-plano {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+}
+
+.preco-plano[data-alerta="sim"] {
+  border-color: var(--danger);
+}
+
+.preco-plano header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.preco-plano h4 {
+  margin: 0;
+}
+
+.preco-regras {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.preco-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.preco-campo label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.preco-fora {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--warning-soft);
+  color: var(--warning);
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.preco-entrada {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.preco-entrada input {
+  min-width: 0;
+  flex: 1;
+}
+
+.preco-unidade {
+  color: var(--muted);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.preco-recomendado {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.preco-usar {
+  padding: 2px 10px;
+  border: 1px solid var(--primary);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--primary-text);
+  font: inherit;
+  font-size: 0.74rem;
+  cursor: pointer;
+}
+
+.preco-usar:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.preco-derivados {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 4px 0;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  background: var(--card-dark);
+}
+
+.preco-derivados dt {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.preco-derivados dd {
+  margin: 2px 0 0;
+  font-weight: 600;
+}
+
+.preco-motivo {
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.preco-salvar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 560px;
+  margin-top: 20px;
+}
+
+.admin-credito {
+  margin: 14px 0 0;
+  padding: 12px 14px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.admin-credito legend {
+  padding: 0 6px;
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .preco-derivados {
+    grid-template-columns: 1fr;
+  }
+
+  .preco-entrada {
+    flex-wrap: wrap;
+  }
+}

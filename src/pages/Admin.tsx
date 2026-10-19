@@ -1,3 +1,4 @@
+import AdminPrecos from "../components/AdminPrecos";
 import Navbar from "../components/Navbar";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -5,6 +6,7 @@ import {
   changeAccountPlan,
   changeAccountStatus,
   getAuthToken,
+  grantCredits,
   listAccounts,
   listAudit,
   type AdminAccount,
@@ -23,9 +25,18 @@ const ROTULO_DE_ACAO: Record<string, string> = {
   plan_changed: "Plano alterado",
   account_enabled: "Conta reativada",
   account_disabled: "Conta desativada",
+  billing_setting_changed: "Regra de cobrança alterada",
+  plan_pricing_changed: "Preço do plano alterado",
+  credit_granted: "Crédito adicionado",
 };
 
 const MOTIVO_MINIMO = 5;
+
+type Aba = "contas" | "precos";
+
+function formatarReais(valor: number) {
+  return valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
 
 function formatarData(iso: string | null) {
   if (!iso) return "—";
@@ -52,6 +63,9 @@ export default function Admin() {
   const [editando, setEditando] = useState<string | null>(null);
   const [motivo, setMotivo] = useState("");
   const [salvando, setSalvando] = useState(false);
+  const [aba, setAba] = useState<Aba>("contas");
+  const [tipoCredito, setTipoCredito] = useState<"pago" | "cortesia">("pago");
+  const [valorCredito, setValorCredito] = useState("");
 
   const buscar = useCallback(
     (
@@ -129,6 +143,8 @@ export default function Admin() {
   }
 
   const motivoValido = motivo.trim().length >= MOTIVO_MINIMO;
+  const valorNumerico = Number(valorCredito.replace(",", "."));
+  const creditoValido = Number.isFinite(valorNumerico) && valorNumerico > 0;
 
   const semAcesso = erro?.includes("nao encontrado") || erro?.includes("não encontrado");
 
@@ -167,7 +183,25 @@ export default function Admin() {
             Quem está usando, quanto já consumiu do teto e em que plano está.
           </p>
 
+          <div className="admin-abas" role="tablist" aria-label="Seções do painel">
+            {(["contas", "precos"] as const).map((item) => (
+              <button
+                key={item}
+                type="button"
+                role="tab"
+                aria-selected={aba === item}
+                className="admin-aba"
+                onClick={() => setAba(item)}
+              >
+                {item === "contas" ? "Contas" : "Preços e créditos"}
+              </button>
+            ))}
+          </div>
+
+          {aba === "precos" && <AdminPrecos aoMudar={() => recarregar()} />}
+
           <form
+            hidden={aba !== "contas"}
             className="admin-busca"
             onSubmit={(evento) => {
               evento.preventDefault();
@@ -193,7 +227,7 @@ export default function Admin() {
 
           {erro && <p className="admin-erro">{erro}</p>}
 
-          <div className="admin-lista">
+          <div className="admin-lista" hidden={aba !== "contas"}>
             {!carregando && contas.length === 0 && (
               <p className="hero-subtitle">Nenhuma conta encontrada.</p>
             )}
@@ -260,6 +294,11 @@ export default function Admin() {
                     </div>
 
                     <div>
+                      <span>Saldo do cliente</span>
+                      <strong className="mono">{formatarReais(conta.credits_remaining_brl)}</strong>
+                    </div>
+
+                    <div>
                       <span>Análises no mês</span>
                       <strong className="mono">{conta.jobs_this_month}</strong>
                     </div>
@@ -321,6 +360,57 @@ export default function Admin() {
                           {conta.is_active ? "Desativar conta" : "Reativar conta"}
                         </button>
                       </div>
+
+                      <fieldset className="admin-credito">
+                        <legend>Adicionar crédito</legend>
+
+                        <div className="admin-acoes">
+                          <select
+                            aria-label="Tipo de crédito"
+                            value={tipoCredito}
+                            onChange={(evento) =>
+                              setTipoCredito(evento.target.value as "pago" | "cortesia")
+                            }
+                          >
+                            <option value="pago">Recarga paga (valor pago em R$)</option>
+                            <option value="cortesia">Cortesia (saldo em R$)</option>
+                          </select>
+
+                          <input
+                            aria-label="Valor em reais"
+                            inputMode="decimal"
+                            placeholder="Ex: 60"
+                            value={valorCredito}
+                            onChange={(evento) => setValorCredito(evento.target.value)}
+                          />
+
+                          <button
+                            type="button"
+                            className="btn"
+                            disabled={!motivoValido || !creditoValido || salvando}
+                            onClick={() =>
+                              aplicar(async () => {
+                                const resposta = await grantCredits(
+                                  conta.id,
+                                  tipoCredito === "pago"
+                                    ? { price_brl: valorNumerico }
+                                    : { credits_brl: valorNumerico },
+                                  motivo
+                                );
+                                setValorCredito("");
+                                return resposta.account;
+                              })
+                            }
+                          >
+                            Adicionar
+                          </button>
+                        </div>
+
+                        <small className="admin-dica">
+                          Usa o mesmo motivo escrito acima. A recarga paga vira saldo pela razão
+                          configurada em Preços e créditos.
+                        </small>
+                      </fieldset>
 
                       {!motivoValido && motivo.length > 0 && (
                         <p className="admin-dica">

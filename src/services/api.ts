@@ -46,7 +46,8 @@ export type PlanInfo = {
   tier: string;
   display_name: string;
   monthly_job_quota: number;
-  monthly_cost_limit_usd: number;
+  price_brl: number;
+  credits_brl: number;
   max_files_per_job: number;
   max_concurrent_jobs: number;
   features: string[];
@@ -478,6 +479,7 @@ export type AdminAccount = {
   jobs_this_month: number;
   spent_this_month_usd: number;
   cost_limit_usd: number;
+  credits_remaining_brl: number;
   documents_total: number;
   last_job_at: string | null;
   locked_until: string | null;
@@ -526,6 +528,97 @@ export async function changeAccountStatus(
 ) {
   return patch<AdminAccount>(`/v1/admin/accounts/${userId}/status`, {
     is_active: isActive,
+    reason,
+  });
+}
+
+export type UsageInfo = {
+  plan_tier: string;
+  plan_name: string;
+  plan_price_brl: number;
+  credits_total_brl: number;
+  credits_remaining_brl: number;
+  plan_credits_remaining_brl: number;
+  percent_used: number;
+  near_limit: boolean;
+  exhausted: boolean;
+  period_start: string;
+  renews_at: string;
+  jobs_used_this_month: number;
+  monthly_job_quota: number;
+  topups: { credits_brl: number; remaining_brl: number; expires_at: string }[];
+  packs: { price_brl: number; credits_brl: number }[];
+};
+
+export type BillingSettings = {
+  fx_rate_brl_per_usd: number;
+  fees_tax_percent: number;
+  topup_credit_ratio: number;
+  topup_cost_ratio: number;
+  topup_validity_months: number;
+  topup_pack_prices_brl: number[];
+  near_limit_percent: number;
+  min_margin_alert_percent: number;
+  typical_usage_percent: number;
+};
+
+export type BillingPlan = {
+  tier: string;
+  price_brl: number;
+  credits_brl: number;
+  cost_ratio: number;
+  ceiling_usd: number;
+  worst_case_margin_percent: number | null;
+  typical_margin_percent: number | null;
+  margin_alert: boolean;
+  recommended: { price_brl: number; credits_brl: number; cost_ratio: number };
+};
+
+export type BillingOverview = {
+  settings: BillingSettings;
+  recommended_settings: BillingSettings;
+  plans: BillingPlan[];
+  global_spend_usd: number;
+  global_budget_usd: number;
+};
+
+export type CreditGrantResult = {
+  id: string;
+  credits_brl: number;
+  expires_at: string;
+  account: AdminAccount;
+};
+
+export async function getUsage() {
+  return get<UsageInfo>("/v1/usage");
+}
+
+export async function getBilling() {
+  return get<BillingOverview>("/v1/admin/billing");
+}
+
+export async function updateBillingSettings(
+  changes: Partial<BillingSettings>,
+  reason: string
+) {
+  return patch<BillingOverview>("/v1/admin/billing/settings", { ...changes, reason });
+}
+
+export async function updatePlanPricing(
+  tier: string,
+  changes: Partial<Pick<BillingPlan, "price_brl" | "credits_brl" | "cost_ratio">>,
+  reason: string
+) {
+  return patch<BillingOverview>(`/v1/admin/billing/plans/${tier}`, { ...changes, reason });
+}
+
+export async function grantCredits(
+  userId: string,
+  grant: { price_brl?: number; credits_brl?: number },
+  reason: string
+) {
+  return post<CreditGrantResult>(`/v1/admin/accounts/${userId}/credits`, {
+    ...grant,
     reason,
   });
 }
