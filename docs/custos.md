@@ -34,19 +34,23 @@ gastando entrada alta.
 
 ## O que cada plano gasta por job
 
+Com os tetos recomendados (Free US$ 0,46, Pro US$ 11, Team US$ 44; ver
+`docs/como-funciona.md`, seção 3.5):
+
 | plano | arquivos/job | nível | custo do job | jobs até o teto | cota do plano |
 |:--|--:|:--|--:|--:|--:|
-| Free | 3 | basic | US$ 0,007 | 69 | 20 |
-| Pro | 50 | basic | US$ 0,12 | 207 | 500 |
-| Pro | 50 | standard | US$ 0,45 | 56 | 500 |
-| Pro | 50 | pro | US$ 1,07 | 23 | 500 |
-| Team | 500 | basic | US$ 1,20 | 166 | 5.000 |
-| Team | 500 | standard | US$ 4,45 | 44 | 5.000 |
-| Team | 500 | pro | US$ 10,73 | 18 | 5.000 |
+| Free | 3 | basic | US$ 0,007 | 65 | 20 |
+| Pro | 50 | basic | US$ 0,12 | 91 | 500 |
+| Pro | 50 | standard | US$ 0,45 | 24 | 500 |
+| Pro | 50 | pro | US$ 1,07 | 10 | 500 |
+| Team | 500 | basic | US$ 1,20 | 36 | 5.000 |
+| Team | 500 | standard | US$ 4,45 | 9 | 5.000 |
+| Team | 500 | pro | US$ 10,73 | 4 | 5.000 |
 
 **No Free a cota de jobs é o que limita.** Nos planos pagos é o teto em dólar,
 e por larga margem. Um assinante Pro que usa sempre o nível mais profundo em
-jobs cheios para no vigésimo terceiro job, não no quingentésimo.
+jobs cheios para no décimo job, não no quingentésimo. Esse teto agora é calculado a
+partir do preço, e é por isso que ele é menor que o antigo (US$ 25).
 
 Isso é uma incoerência da tabela de preços, não do código: anunciar 500 jobs
 por mês quando o dinheiro acaba em 23 gera reclamação legítima. Ou o teto em

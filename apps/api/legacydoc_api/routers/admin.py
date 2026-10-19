@@ -6,20 +6,44 @@ import uuid
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Query
+from legacydoc_core.billing import (
+    RECOMMENDED_PLANS,
+    RECOMMENDED_SETTINGS,
+    Pricing,
+    balance_for,
+    grant_credit,
+    load_pricing,
+)
 from legacydoc_core.db import get_db
 from legacydoc_core.errors import NotFoundError, ValidationError
-from legacydoc_core.models import AdminAction, Document, Job, JobStatus, UsageRecord, User
-from legacydoc_core.plans import PlanTier, get_plan
+from legacydoc_core.models import (
+    AdminAction,
+    BillingSetting,
+    Document,
+    Job,
+    JobStatus,
+    PlanPricing,
+    UsageRecord,
+    User,
+)
+from legacydoc_core.plans import PlanTier
+from legacydoc_core.settings import Settings
 from sqlalchemy import Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from legacydoc_api.deps import Principal, require_admin
+from legacydoc_api.deps import Principal, get_app_settings, global_spend_this_month, require_admin
 from legacydoc_api.schemas import (
     AdminAccountList,
     AdminAccountResponse,
     AdminActionResponse,
+    AdminBillingResponse,
     AdminPlanChangeRequest,
     AdminStatusChangeRequest,
+    BillingPlanView,
+    BillingSettingsUpdate,
+    CreditGrantRequest,
+    CreditGrantResponse,
+    PlanPricingUpdate,
 )
 
 router = APIRouter(prefix="/v1/admin", tags=["admin"])
@@ -27,6 +51,9 @@ router = APIRouter(prefix="/v1/admin", tags=["admin"])
 ACAO_PLANO = "plan_changed"
 ACAO_ATIVACAO = "account_enabled"
 ACAO_DESATIVACAO = "account_disabled"
+ACTION_SETTING = "billing_setting_changed"
+ACTION_PLAN_PRICING = "plan_pricing_changed"
+ACTION_CREDIT = "credit_granted"
 
 
 def _inicio_do_mes() -> datetime:
@@ -89,8 +116,9 @@ async def _metricas_por_conta(session: AsyncSession, ids: list[uuid.UUID]) -> di
     return metricas
 
 
-def _para_resposta(usuario: User, metricas: dict) -> AdminAccountResponse:
-    plano = get_plan(usuario.plan_tier)
+def _para_resposta(
+    usuario: User, metricas: dict, ceiling_usd: float, credits_remaining_brl: float
+) -> AdminAccountResponse:
 
     return AdminAccountResponse(
         id=usuario.id,
@@ -100,12 +128,23 @@ def _para_resposta(usuario: User, metricas: dict) -> AdminAccountResponse:
         is_active=usuario.is_active,
         is_admin=usuario.is_admin,
         created_at=usuario.created_at,
-        cost_limit_usd=plano.monthly_cost_limit_usd,
+        cost_limit_usd=round(ceiling_usd, 4),
+        credits_remaining_brl=round(credits_remaining_brl, 2),
         locked_until=usuario.locked_until,
         jobs_this_month=metricas["jobs_this_month"],
         spent_this_month_usd=round(metricas["spent_this_month_usd"], 4),
         documents_total=metricas["documents_total"],
         last_job_at=metricas["last_job_at"],
+    )
+
+
+async def _account_view(
+    session: AsyncSession, usuario: User, metricas: dict, pricing: Pricing
+) -> AdminAccountResponse:
+    balance = await balance_for(session, usuario.id, usuario.plan_tier, pricing)
+
+    return _para_resposta(
+        usuario, metricas, balance.plan.ceiling_usd, balance.credits_remaining_brl
     )
 
 
@@ -141,9 +180,13 @@ async def list_accounts(
     )
 
     metricas = await _metricas_por_conta(session, [usuario.id for usuario in usuarios])
+    pricing = await load_pricing(session)
 
     return AdminAccountList(
-        items=[_para_resposta(usuario, metricas[usuario.id]) for usuario in usuarios],
+        items=[
+            await _account_view(session, usuario, metricas[usuario.id], pricing)
+            for usuario in usuarios
+        ],
         total=total,
     )
 
@@ -217,7 +260,7 @@ async def change_plan(
 
     metricas = await _metricas_por_conta(session, [usuario.id])
 
-    return _para_resposta(usuario, metricas[usuario.id])
+    return await _account_view(session, usuario, metricas[usuario.id], await load_pricing(session))
 
 
 @router.patch("/accounts/{user_id}/status", response_model=AdminAccountResponse)
@@ -259,7 +302,7 @@ async def change_status(
 
     metricas = await _metricas_por_conta(session, [usuario.id])
 
-    return _para_resposta(usuario, metricas[usuario.id])
+    return await _account_view(session, usuario, metricas[usuario.id], await load_pricing(session))
 
 
 @router.get("/audit", response_model=list[AdminActionResponse])
@@ -288,3 +331,213 @@ async def list_audit(
         )
         for registro in registros
     ]
+
+
+def _plan_view(pricing: Pricing, tier: str) -> BillingPlanView:
+    plan = pricing.plans[tier]
+    margin = plan.worst_case_margin_percent
+    alert_threshold = pricing.settings.min_margin_alert_percent
+
+    return BillingPlanView(
+        tier=tier,
+        price_brl=plan.price_brl,
+        credits_brl=plan.credits_brl,
+        cost_ratio=plan.cost_ratio,
+        ceiling_usd=round(plan.ceiling_usd, 4),
+        worst_case_margin_percent=None if margin is None else round(margin, 1),
+        typical_margin_percent=(
+            None if plan.typical_margin_percent is None else round(plan.typical_margin_percent, 1)
+        ),
+        margin_alert=margin is not None and margin < alert_threshold,
+        recommended=RECOMMENDED_PLANS[tier],
+    )
+
+
+async def _billing_response(session: AsyncSession, app_settings: Settings) -> AdminBillingResponse:
+    pricing = await load_pricing(session)
+    current = pricing.settings
+
+    return AdminBillingResponse(
+        settings={name: getattr(current, name) for name in RECOMMENDED_SETTINGS},
+        recommended_settings=RECOMMENDED_SETTINGS,
+        plans=[_plan_view(pricing, str(tier)) for tier in PlanTier if str(tier) in pricing.plans],
+        global_spend_usd=round(await global_spend_this_month(session), 4),
+        global_budget_usd=app_settings.global_monthly_budget_usd,
+    )
+
+
+def _record_config_change(
+    session: AsyncSession,
+    *,
+    author: Principal,
+    action: str,
+    target: str,
+    before: object,
+    after: object,
+    reason: str,
+) -> None:
+    session.add(
+        AdminAction(
+            actor_id=author.id,
+            actor_email=author.user.email,
+            target_user_id=None,
+            target_email=target,
+            action=action,
+            value_before=str(before)[:120],
+            value_after=str(after)[:120],
+            reason=reason.strip(),
+        )
+    )
+
+
+def _normalised_packs(prices: list[float]) -> list[float]:
+    if any(price <= 0 or price > 1_000_000 for price in prices):
+        raise ValidationError("Os pacotes precisam de valores positivos.")
+
+    return sorted({round(price, 2) for price in prices})
+
+
+@router.get("/billing", response_model=AdminBillingResponse)
+async def get_billing(
+    _: Principal = Depends(require_admin),
+    session: AsyncSession = Depends(get_db),
+    app_settings: Settings = Depends(get_app_settings),
+) -> AdminBillingResponse:
+    """Regras comerciais em vigor, com o valor recomendado ao lado de cada uma."""
+    return await _billing_response(session, app_settings)
+
+
+@router.patch("/billing/settings", response_model=AdminBillingResponse)
+async def update_billing_settings(
+    payload: BillingSettingsUpdate,
+    admin: Principal = Depends(require_admin),
+    session: AsyncSession = Depends(get_db),
+    app_settings: Settings = Depends(get_app_settings),
+) -> AdminBillingResponse:
+    await load_pricing(session)
+    row = await session.get(BillingSetting, 1)
+    assert row is not None
+
+    changes = payload.model_dump(exclude={"reason"}, exclude_none=True)
+
+    if "topup_pack_prices_brl" in changes:
+        changes["topup_pack_prices_brl"] = _normalised_packs(changes["topup_pack_prices_brl"])
+
+    changed = False
+
+    for field, new_value in changes.items():
+        old_value = getattr(row, field)
+
+        if old_value == new_value:
+            continue
+
+        setattr(row, field, new_value)
+        changed = True
+        _record_config_change(
+            session,
+            author=admin,
+            action=ACTION_SETTING,
+            target=f"billing:{field}",
+            before=old_value,
+            after=new_value,
+            reason=payload.reason,
+        )
+
+    if not changed:
+        raise ValidationError("Nenhum valor mudou.")
+
+    await session.flush()
+
+    return await _billing_response(session, app_settings)
+
+
+@router.patch("/billing/plans/{tier}", response_model=AdminBillingResponse)
+async def update_plan_pricing(
+    tier: str,
+    payload: PlanPricingUpdate,
+    admin: Principal = Depends(require_admin),
+    session: AsyncSession = Depends(get_db),
+    app_settings: Settings = Depends(get_app_settings),
+) -> AdminBillingResponse:
+    if tier not in {str(item) for item in PlanTier}:
+        raise NotFoundError("Plano nao encontrado.")
+
+    await load_pricing(session)
+    row = await session.get(PlanPricing, tier)
+    assert row is not None
+
+    changed = False
+
+    for field, new_value in payload.model_dump(exclude={"reason"}, exclude_none=True).items():
+        old_value = getattr(row, field)
+
+        if old_value == new_value:
+            continue
+
+        setattr(row, field, new_value)
+        changed = True
+        _record_config_change(
+            session,
+            author=admin,
+            action=ACTION_PLAN_PRICING,
+            target=f"plan:{tier}:{field}",
+            before=old_value,
+            after=new_value,
+            reason=payload.reason,
+        )
+
+    if not changed:
+        raise ValidationError("Nenhum valor mudou.")
+
+    await session.flush()
+
+    return await _billing_response(session, app_settings)
+
+
+@router.post("/accounts/{user_id}/credits", response_model=CreditGrantResponse, status_code=201)
+async def add_credits(
+    user_id: uuid.UUID,
+    payload: CreditGrantRequest,
+    admin: Principal = Depends(require_admin),
+    session: AsyncSession = Depends(get_db),
+) -> CreditGrantResponse:
+    """Adiciona credito a uma conta: recarga paga (pelo valor) ou cortesia (pelo credito)."""
+    if (payload.price_brl is None) == (payload.credits_brl is None):
+        raise ValidationError("Informe o valor pago (price_brl) ou o credito (credits_brl), so um.")
+
+    user = await _conta_alvo(user_id, session)
+    pricing = await load_pricing(session)
+
+    if payload.price_brl is not None:
+        credits = round(payload.price_brl * pricing.settings.topup_credit_ratio, 2)
+        paid: float | None = payload.price_brl
+    else:
+        credits = round(payload.credits_brl or 0.0, 2)
+        paid = None
+
+    grant = await grant_credit(
+        session, user.id, credits_brl=credits, price_paid_brl=paid, pricing=pricing
+    )
+
+    session.add(
+        AdminAction(
+            actor_id=admin.id,
+            actor_email=admin.user.email,
+            target_user_id=user.id,
+            target_email=user.email,
+            action=ACTION_CREDIT,
+            value_before=None,
+            value_after=f"R$ {credits:.2f}",
+            reason=payload.reason.strip(),
+        )
+    )
+    await session.flush()
+
+    metricas = await _metricas_por_conta(session, [user.id])
+
+    return CreditGrantResponse(
+        id=grant.id,
+        credits_brl=credits,
+        expires_at=grant.expires_at,
+        account=await _account_view(session, user, metricas[user.id], pricing),
+    )

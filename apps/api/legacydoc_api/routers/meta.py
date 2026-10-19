@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from legacydoc_core.billing import load_pricing
+from legacydoc_core.db import get_db
 from legacydoc_core.plans import PLANS
 from legacydoc_exporters import ExporterFactory
 from legacydoc_parsing.languages import LANGUAGES, extensions_by_language
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from legacydoc_api.plan_views import plan_info
 from legacydoc_api.schemas import LanguageResponse, PlanInfo
 
 router = APIRouter(prefix="/v1/meta", tags=["meta"])
@@ -27,21 +31,10 @@ async def list_languages() -> list[LanguageResponse]:
 
 
 @router.get("/plans", response_model=list[PlanInfo])
-async def list_plans() -> list[PlanInfo]:
-    return [
-        PlanInfo(
-            tier=str(plan.tier),
-            display_name=plan.display_name,
-            monthly_job_quota=plan.monthly_job_quota,
-            monthly_cost_limit_usd=plan.monthly_cost_limit_usd,
-            max_files_per_job=plan.max_files_per_job,
-            max_concurrent_jobs=plan.max_concurrent_jobs,
-            features=sorted(str(feature) for feature in plan.features),
-            max_depth=str(plan.max_depth),
-            available_depths=[str(depth) for depth in plan.available_depths],
-        )
-        for plan in PLANS.values()
-    ]
+async def list_plans(session: AsyncSession = Depends(get_db)) -> list[PlanInfo]:
+    pricing = await load_pricing(session)
+
+    return [plan_info(plan, pricing) for plan in PLANS.values()]
 
 
 @router.get("/export-formats", response_model=list[str])

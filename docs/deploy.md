@@ -69,6 +69,11 @@ estiver na frente: ligado sem proxy, qualquer chamador forja um
 docker compose -f infra/docker-compose.yml up -d --build
 ```
 
+A migração `0006_billing_credits` cria as tabelas de preço e crédito; os valores
+iniciais são criados na primeira leitura, a partir dos recomendados. Depois do deploy,
+entre no painel admin, aba **Preços e créditos**, e confirme os valores antes de abrir
+para clientes.
+
 A ordem se resolve sozinha: `migrate` espera o Postgres e aplica o schema; API e
 worker esperam o `migrate` terminar. O entrypoint também espera o banco a cada
 restart, então reiniciar o Postgres não derruba os serviços em loop.

@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 
 from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from legacydoc_core.billing import balance_for, load_pricing, month_start, spend_in_month
 from legacydoc_core.db import get_db
 from legacydoc_core.errors import (
     AuthenticationError,
@@ -144,27 +145,15 @@ async def count_jobs_this_month(session: AsyncSession, user_id: uuid.UUID) -> in
     return int(result.scalar_one())
 
 
-def _current_month_start() -> datetime:
-    now = datetime.now(UTC)
-    return datetime(now.year, now.month, 1, tzinfo=UTC)
-
-
 async def spend_this_month(session: AsyncSession, user_id: uuid.UUID) -> float:
-    """How much this user has cost in LLM spend during the current month."""
-    result = await session.execute(
-        select(func.coalesce(func.sum(UsageRecord.cost_usd), 0.0)).where(
-            UsageRecord.user_id == user_id,
-            UsageRecord.created_at >= _current_month_start(),
-        )
-    )
-    return float(result.scalar_one())
+    return await spend_in_month(session, user_id)
 
 
 async def global_spend_this_month(session: AsyncSession) -> float:
     """System-wide spend for the current month."""
     result = await session.execute(
         select(func.coalesce(func.sum(UsageRecord.cost_usd), 0.0)).where(
-            UsageRecord.created_at >= _current_month_start()
+            UsageRecord.created_at >= month_start()
         )
     )
     return float(result.scalar_one())
@@ -188,19 +177,14 @@ async def enforce_cost_budget(
             },
         )
 
-    user_spend = await spend_this_month(session, principal.id)
-    limit = principal.plan.monthly_cost_limit_usd
+    pricing = await load_pricing(session)
+    balance = await balance_for(session, principal.id, principal.user.plan_tier, pricing)
 
-    if user_spend >= limit:
+    if balance.available_usd <= 0:
         raise QuotaExceededError(
-            f"Voce atingiu o limit de processamento do plano "
-            f"{principal.plan.display_name} neste mes "
-            f"(US$ {user_spend:.2f} de US$ {limit:.2f}).",
-            details={
-                "scope": "user",
-                "spent_usd": round(user_spend, 4),
-                "limit_usd": limit,
-            },
+            f"Seus creditos do plano {principal.plan.display_name} acabaram neste mes. "
+            "Adicione creditos ou aguarde a renovacao.",
+            details={"scope": "user", "credits_remaining_brl": 0.0, "percent_used": 100.0},
         )
 
 

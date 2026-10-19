@@ -457,7 +457,7 @@ de entradas. Entrada recusada por segurança não falha o job; vira aviso no res
 | Bytes não são de um zip (assinatura `PK`); o `Content-Type` declarado é ignorado | 422 |
 | Maior que 50 MB | 422 |
 | Arquivo vazio | 422 |
-| Cota, teto de gasto ou plano insuficiente | 402 |
+| Cota, saldo de créditos esgotado ou plano insuficiente | 402 |
 
 ---
 
@@ -524,6 +524,25 @@ que é escrito para ser lido. **Nunca mostre `details`**, que é diagnóstico.
 | 422 | `validation_error` | Extensão não suportada, zip inválido, corpo malformado |
 | 429 | `rate_limited` | Esperar o `Retry-After` |
 | 502 | `provider_error` | Os provedores de IA falharam; o job já tentou de novo |
+
+## Saldo na barra de status
+
+Mostre o saldo do cliente de forma discreta, com `GET /v1/usage`:
+
+```ts
+const uso = await client.usage();
+statusBar.text = `$(credit-card) R$ ${uso.credits_remaining_brl.toFixed(2)}`;
+statusBar.tooltip = `${uso.percent_used}% usado · renova em ${new Date(uso.renews_at).toLocaleDateString("pt-BR")}`;
+statusBar.backgroundColor = uso.exhausted
+  ? new vscode.ThemeColor("statusBarItem.errorBackground")
+  : uso.near_limit
+    ? new vscode.ThemeColor("statusBarItem.warningBackground")
+    : undefined;
+```
+
+Consulte **depois de cada job**, não em laço. Quando `exhausted` for verdadeiro, não
+dispare o job: a API responderia 402. Mostre a mensagem e a opção de adicionar crédito.
+O saldo é sempre em reais; a API não expõe o custo real em dólar.
 
 ## Limites que valem para a extensão
 

@@ -7,11 +7,11 @@ import uuid
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Request, status
+from legacydoc_core.billing import load_pricing
 from legacydoc_core.db import get_db
 from legacydoc_core.email import get_email_sender, render_password_reset
 from legacydoc_core.errors import AuthenticationError, ConflictError, NotFoundError
 from legacydoc_core.models import ApiKey, PasswordResetToken, User
-from legacydoc_core.plans import get_plan
 from legacydoc_core.security import (
     MAX_FAILED_LOGINS,
     RESET_TOKEN_TTL_MINUTES,
@@ -39,6 +39,7 @@ from legacydoc_api.deps import (
     get_principal,
     spend_this_month,
 )
+from legacydoc_api.plan_views import plan_info
 from legacydoc_api.schemas import (
     ApiKeyCreatedResponse,
     ApiKeyCreateRequest,
@@ -46,7 +47,6 @@ from legacydoc_api.schemas import (
     LoginRequest,
     PasswordResetConfirm,
     PasswordResetRequest,
-    PlanInfo,
     RegisterRequest,
     TokenResponse,
     UserResponse,
@@ -138,7 +138,7 @@ async def me(
         id=principal.user.id,
         email=principal.user.email,
         display_name=principal.user.display_name,
-        plan=_plan_info(principal.user.plan_tier),
+        plan=plan_info(principal.plan, await load_pricing(session)),
         jobs_used_this_month=used,
         spent_this_month_usd=round(spent, 4),
         is_admin=principal.user.is_admin,
@@ -310,20 +310,4 @@ def _token_for(user: User, settings: Settings) -> TokenResponse:
     return TokenResponse(
         access_token=create_access_token(str(user.id), user.email, settings),
         expires_in_seconds=settings.jwt_expire_minutes * 60,
-    )
-
-
-def _plan_info(tier: str) -> PlanInfo:
-    plan = get_plan(tier)
-
-    return PlanInfo(
-        tier=str(plan.tier),
-        display_name=plan.display_name,
-        monthly_job_quota=plan.monthly_job_quota,
-        monthly_cost_limit_usd=plan.monthly_cost_limit_usd,
-        max_files_per_job=plan.max_files_per_job,
-        max_concurrent_jobs=plan.max_concurrent_jobs,
-        features=sorted(str(feature) for feature in plan.features),
-        max_depth=str(plan.max_depth),
-        available_depths=[str(depth) for depth in plan.available_depths],
     )

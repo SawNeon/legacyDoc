@@ -65,8 +65,6 @@ class PlanLimits:
     display_name: str
     monthly_job_quota: int
 
-    monthly_cost_limit_usd: float
-
     max_files_per_job: int
     max_concurrent_jobs: int
     queue_priority: int
@@ -88,7 +86,6 @@ _FREE = PlanLimits(
     tier=PlanTier.FREE,
     display_name="Free",
     monthly_job_quota=20,
-    monthly_cost_limit_usd=0.50,
     max_files_per_job=3,
     max_concurrent_jobs=1,
     queue_priority=100,
@@ -100,7 +97,6 @@ _PRO = PlanLimits(
     tier=PlanTier.PRO,
     display_name="Pro",
     monthly_job_quota=500,
-    monthly_cost_limit_usd=25.00,
     max_files_per_job=50,
     max_concurrent_jobs=4,
     queue_priority=50,
@@ -120,7 +116,6 @@ _TEAM = PlanLimits(
     tier=PlanTier.TEAM,
     display_name="Team",
     monthly_job_quota=5000,
-    monthly_cost_limit_usd=200.00,
     max_files_per_job=500,
     max_concurrent_jobs=16,
     queue_priority=10,

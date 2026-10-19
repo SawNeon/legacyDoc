@@ -49,7 +49,7 @@ Três decisões explicam quase tudo:
 | `packages/agents` | Pipeline dos agentes, prompts, seleção de contexto | `core`, `parsing`, `providers` |
 | `packages/providers` | OpenAI, Anthropic, Gemini atrás da mesma interface, roteador | `core` |
 | `packages/exporters` | Markdown, PDF, JSON | `core` |
-| `tests` | 297 testes de backend; 41 no front (`npm test`) | tudo |
+| `tests` | 394 testes de backend; 73 no front (`npm test`) | tudo |
 
 Regra de dependência: **`core` não importa ninguém**, e nenhum módulo de domínio
 importa FastAPI (`packages/core/legacydoc_core/errors.py`). Por isso os erros de
@@ -180,7 +180,9 @@ documento de outra conta respondem 404 (`deps.py`, `jobs.py`).
 | | Free | Pro | Team |
 | :--- | ---: | ---: | ---: |
 | Jobs por mês | 20 | 500 | 5.000 |
-| Teto de gasto em IA por mês | US$ 0,50 | US$ 25 | US$ 200 |
+| Preço (R$ por mês) | 0 | 100 | 400 |
+| Saldo mostrado ao cliente | R$ 5 | R$ 120 | R$ 480 |
+| Teto de custo real em IA | US$ 0,46 | US$ 11 | US$ 44 |
 | Arquivos por job | 3 | 50 | 500 |
 | Jobs simultâneos | 1 | 4 | 16 |
 | Profundidade máxima | basic | pro | pro |
@@ -189,8 +191,10 @@ documento de outra conta respondem 404 (`deps.py`, `jobs.py`).
 | Webhook | não | sim | sim |
 | Prioridade na fila | 100 | 50 | 10 (menor vai primeiro) |
 
-Os planos são constantes no código (`_FREE`, `_PRO`, `_TEAM`); o plano
-de cada conta é só o texto `plan_tier` na tabela `users`. Mudar de plano é trocar
+Preço, saldo mostrado e teto de custo vêm do **banco** e se editam no painel
+admin (seção 3.5); os valores da tabela são os recomendados. O que ainda é constante
+no código (`_FREE`, `_PRO`, `_TEAM`) são cota de jobs, arquivos, simultâneos,
+profundidade e recursos. O plano de cada conta é só o texto `plan_tier` na tabela `users`. Mudar de plano é trocar
 esse texto, e o **painel admin** faz exatamente isso. Ainda **não há pagamento**.
 
 **O limite é em dólares, não em jobs** (`plans.py`): um arquivo e quinhentos
@@ -219,7 +223,7 @@ e vale o plano do momento da execução. Há teste para isso
 Antes de enfileirar, nesta ordem:
 
 1. `enforce_cost_budget`: teto **global** do mês (`GLOBAL_MONTHLY_BUDGET_USD`,
-   padrão US$ 50) e teto do **usuário**. O global é a última defesa do cartão: várias
+   padrão US$ 50) e **saldo do usuário** (plano mais créditos, seção 3.5). O global é a última defesa do cartão: várias
    contas cada uma dentro do seu limite ainda podem somar mais do que se pode pagar.
 2. `enforce_job_quota`: cota mensal de jobs e concorrência.
 
@@ -239,6 +243,66 @@ gera melhorias** (a profundidade dela é limitada a `basic`), então para ela o 
 `false` e a lista vem vazia. O `true` aparece em quem **caiu** de um plano pago: os
 documentos gerados quando era Pro continuam lá, ocultos, e voltam com um novo upgrade.
 Ver a limitação 13 sobre o que isso significa para a vitrine do plano Pro.
+
+### 3.5 Preço, saldo e créditos (`billing.py`, painel admin)
+
+O modelo de negócio é **assinatura com teto de custo**. O cliente paga um preço
+fixo, vê um **saldo em reais** que cai conforme usa, e o sistema bloqueia quando o
+teto de custo real é atingido. Quem passa disso adiciona crédito.
+
+Tudo isto é configurado no painel (aba **Preços e créditos**), com o valor
+recomendado ao lado de cada campo e um botão "Usar recomendado":
+
+| Onde | Campo | Recomendado |
+| :--- | :--- | ---: |
+| Por plano | Preço | Free 0, Pro 100, Team 400 |
+| Por plano | Saldo mostrado | R$ 5, 120, 480 |
+| Por plano | Parte do saldo que é custo real | 55% |
+| Geral | Câmbio de cálculo | R$ 6,00 por US$ |
+| Geral | Taxas e imposto | 10% do preço |
+| Geral | Saldo por real pago na recarga | 1,00 |
+| Geral | Custo real da recarga | 55% |
+| Geral | Validade da recarga | 12 meses |
+| Geral | Pacotes de recarga | R$ 30, 60, 100 |
+| Geral | Aviso de limite | 80% |
+| Geral | Alerta de margem mínima | 15% |
+| Geral | Uso típico do teto | 60% |
+
+**A conta.** `teto em US$ = saldo mostrado × parte de custo real ÷ câmbio`. Para o Pro:
+120 × 0,55 ÷ 6 = **US$ 11**. A margem no pior caso é
+`(preço − taxas − custo) ÷ preço`: (100 − 10 − 66) ÷ 100 = **24%**. No uso típico (60%
+do teto) sobe para 50%. O painel mostra os dois e marca o plano em **alerta de
+margem** quando o pior caso cai abaixo do mínimo configurado.
+
+**O dólar é a fonte da verdade.** O sistema continua medindo o custo real em US$ por
+chamada (`usage_records`). O saldo em reais é uma conversão de exibição:
+`saldo = saldo do plano × (1 − gasto ÷ teto)`. O cliente **nunca vê dólar**
+(`GET /v1/usage` não tem campo em US$); o custo real, o teto e a margem só aparecem
+no painel admin.
+
+**Onde ficam os valores.** Tabelas `billing_settings` (uma linha) e `plan_pricing`
+(uma por plano). Na primeira leitura, linhas que faltam são criadas com os valores
+recomendados (`RECOMMENDED_SETTINGS` e `RECOMMENDED_PLANS` em `billing.py`). Esses
+valores no código são só a **referência exibida no painel e o ponto de partida**; o
+que vale em produção é o que está salvo no banco. Cada campo alterado grava **uma
+linha de auditoria** com o valor antigo, o novo e o motivo obrigatório.
+
+**Créditos extras.** Uma recarga vira uma linha em `credit_grants`, com o saldo
+mostrado, o teto de custo (calculado **na hora da compra**, então mudar o câmbio
+depois não altera o que já foi vendido) e a validade. A ordem de consumo:
+
+1. O saldo do plano, que **renova todo mês**.
+2. Depois, os créditos que **vencem primeiro**.
+
+Isso é feito por `settle_overflow`: ele compara o gasto do mês com o teto do plano e
+debita o excedente dos créditos, uma única vez (`usage_settlements` guarda quanto já
+foi debitado no mês). O excedente que nenhum crédito cobre é **perdoado**: ele é a
+folga de um job já aceito (o freio não é exato), e cobrá-lo como dívida engoliria a
+próxima recarga. Crédito vencido não conta.
+
+**Ainda não há pagamento.** A recarga é lançada pelo admin (paga, pelo valor, ou
+cortesia). Quando houver gateway, o webhook de pagamento chama a mesma
+`grant_credit`.
 
 ---
 
@@ -548,7 +612,7 @@ decisão antes de abrir para o público.
 
 ## 12. Onde estão os testes
 
-297 testes em `tests/` (SQLite em memória; `test_queue_postgres.py` roda contra um
+394 testes em `tests/` (SQLite em memória; `test_queue_postgres.py` roda contra um
 Postgres real quando disponível).
 
 | Arquivo | Garante |
@@ -560,17 +624,19 @@ Postgres real quando disponível).
 | `test_worker_integration.py` | Da fila ao documento, sem gastar token (roteador substituído) |
 | `test_pipeline.py` | Ancoragem, descarte de símbolo inventado, auditoria e reescrita |
 | `test_depth.py` | Profundidade, teto do plano, rebaixamento na fila |
+| `test_billing.py` | Valores recomendados, conta do teto e da margem, saldo, recarga, ordem de consumo, validação e auditoria do painel de preços |
 | `test_archive.py` | Zip slip, bomba, symlink, limites |
 | `test_repository.py` | URL permitida, varredura, limites |
 | `test_ratelimit.py` | Janela deslizante, cabeçalhos, IP por proxy |
 | `test_parsing.py`, `test_legacy_languages.py`, `test_symbol_index.py` | 36 linguagens, símbolos, índice |
 | `test_providers.py` | Cadeia de reserva, custo, cache |
 
-No front (`Front/LegacyDocFront`, `npm test`, Vitest), 41 testes:
+No front (`Front/LegacyDocFront`, `npm test`, Vitest), 73 testes:
 
 | Arquivo | Garante |
 | :--- | :--- |
 | `services/upload.test.ts` | Filtro de pasta, caminhos no zip, limites, truncamento, validação de `.zip` |
 | `services/api.test.ts` | Exclusão (204, 404, 409, 401), troca de conta, acompanhamento do job e erros |
+| `services/billingForm.test.ts` | Conversão de % e listas, só enviar o que mudou, valores inválidos, formatação e estado do saldo |
 
 Rodar tudo: `python -m pytest`. Qualidade: `ruff check apps tests` e `ruff format --check`.

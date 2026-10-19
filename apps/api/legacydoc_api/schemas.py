@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from legacydoc_core.domain import SymbolDoc
 from legacydoc_core.plans import GenerationDepth
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StringConstraints
+
+Reason = Annotated[str, StringConstraints(strip_whitespace=True, min_length=5, max_length=500)]
 
 
 class RegisterRequest(BaseModel):
@@ -32,7 +34,8 @@ class PlanInfo(BaseModel):
     tier: str
     display_name: str
     monthly_job_quota: int
-    monthly_cost_limit_usd: float
+    price_brl: float = Field(description="Preco mensal do plano, em reais.")
+    credits_brl: float = Field(description="Saldo mensal exibido ao cliente, em reais.")
     max_files_per_job: int
     max_concurrent_jobs: int
     features: list[str]
@@ -275,7 +278,12 @@ class AdminAccountResponse(BaseModel):
 
     jobs_this_month: int
     spent_this_month_usd: float
-    cost_limit_usd: float = Field(description="Teto do plano, para comparar com o gasto.")
+    cost_limit_usd: float = Field(
+        description="Teto de custo real do plano, para comparar com o gasto."
+    )
+    credits_remaining_brl: float = Field(
+        description="Saldo que o cliente ve, plano mais creditos extras."
+    )
     documents_total: int
     last_job_at: datetime | None
 
@@ -291,9 +299,7 @@ class AdminAccountList(BaseModel):
 
 class AdminPlanChangeRequest(BaseModel):
     plan: str
-    reason: str = Field(
-        min_length=5,
-        max_length=500,
+    reason: Reason = Field(
         description="Por que esta mudando. Uma troca sem motivo escrito e a que "
         "ninguem consegue explicar tres meses depois.",
     )
@@ -301,7 +307,7 @@ class AdminPlanChangeRequest(BaseModel):
 
 class AdminStatusChangeRequest(BaseModel):
     is_active: bool
-    reason: str = Field(min_length=5, max_length=500)
+    reason: Reason
 
 
 class AdminActionResponse(BaseModel):
@@ -313,3 +319,95 @@ class AdminActionResponse(BaseModel):
     value_after: str | None
     reason: str
     created_at: datetime
+
+
+class UsageTopup(BaseModel):
+    credits_brl: float
+    remaining_brl: float
+    expires_at: datetime
+
+
+class UsagePack(BaseModel):
+    price_brl: float
+    credits_brl: float
+
+
+class UsageResponse(BaseModel):
+    plan_tier: str
+    plan_name: str
+    plan_price_brl: float
+
+    credits_total_brl: float
+    credits_remaining_brl: float
+    plan_credits_remaining_brl: float
+    percent_used: float
+    near_limit: bool = Field(description="Verdadeiro quando o uso passou do aviso configurado.")
+    exhausted: bool
+
+    period_start: datetime
+    renews_at: datetime
+    jobs_used_this_month: int
+    monthly_job_quota: int
+
+    topups: list[UsageTopup]
+    packs: list[UsagePack]
+
+
+class BillingPlanView(BaseModel):
+    tier: str
+    price_brl: float
+    credits_brl: float
+    cost_ratio: float
+    ceiling_usd: float
+    worst_case_margin_percent: float | None
+    typical_margin_percent: float | None
+    margin_alert: bool
+    recommended: dict[str, float]
+
+
+class AdminBillingResponse(BaseModel):
+    settings: dict[str, Any]
+    recommended_settings: dict[str, Any]
+    plans: list[BillingPlanView]
+    global_spend_usd: float
+    global_budget_usd: float
+
+
+class BillingSettingsUpdate(BaseModel):
+    reason: Reason
+    fx_rate_brl_per_usd: float | None = Field(default=None, gt=0, le=100)
+    fees_tax_percent: float | None = Field(default=None, ge=0, le=60)
+    topup_credit_ratio: float | None = Field(default=None, gt=0, le=10)
+    topup_cost_ratio: float | None = Field(default=None, gt=0, le=1)
+    topup_validity_months: int | None = Field(default=None, ge=1, le=60)
+    topup_pack_prices_brl: list[float] | None = Field(default=None, min_length=1, max_length=10)
+    near_limit_percent: float | None = Field(default=None, gt=0, le=100)
+    min_margin_alert_percent: float | None = Field(default=None, ge=0, le=100)
+    typical_usage_percent: float | None = Field(default=None, gt=0, le=100)
+
+
+class PlanPricingUpdate(BaseModel):
+    reason: Reason
+    price_brl: float | None = Field(default=None, ge=0, le=1_000_000)
+    credits_brl: float | None = Field(default=None, gt=0, le=1_000_000)
+    cost_ratio: float | None = Field(default=None, gt=0, le=1)
+
+
+class CreditGrantRequest(BaseModel):
+    reason: Reason
+    price_brl: float | None = Field(
+        default=None,
+        gt=0,
+        le=1_000_000,
+        description="Valor pago: o credito sai da razao de recarga.",
+    )
+    credits_brl: float | None = Field(
+        default=None, gt=0, le=1_000_000, description="Credito de cortesia, sem valor pago."
+    )
+
+
+class CreditGrantResponse(BaseModel):
+    id: uuid.UUID
+    credits_brl: float
+    expires_at: datetime
+    account: AdminAccountResponse

@@ -477,6 +477,66 @@ Respostas de sucesso trazem `X-RateLimit-Limit` e `X-RateLimit-Remaining`. O pol
 a cada 2 a 3 segundos cabe folgado na faixa de leitura; **obedeça o `Retry-After`** em
 vez de insistir, porque insistir só prolonga o bloqueio.
 
+## 10.1 Saldo de créditos
+
+O cliente paga um preço fixo, vê um **saldo em reais** e a API bloqueia (402) quando
+ele acaba. O saldo **nunca é em dólar**.
+
+```http
+GET /v1/usage
+Authorization: Bearer ldk_xxx
+
+200 OK
+{
+  "plan_tier": "pro", "plan_name": "Pro", "plan_price_brl": 100.0,
+  "credits_total_brl": 180.0,
+  "credits_remaining_brl": 147.3,
+  "plan_credits_remaining_brl": 87.3,
+  "percent_used": 18.2,
+  "near_limit": false,
+  "exhausted": false,
+  "period_start": "2026-10-01T00:00:00Z",
+  "renews_at": "2026-11-01T00:00:00Z",
+  "jobs_used_this_month": 37, "monthly_job_quota": 500,
+  "topups": [
+    { "credits_brl": 60.0, "remaining_brl": 60.0, "expires_at": "2027-10-19T12:01:20Z" }
+  ],
+  "packs": [
+    { "price_brl": 30.0, "credits_brl": 30.0 },
+    { "price_brl": 60.0, "credits_brl": 60.0 }
+  ]
+}
+```
+
+| Campo | Para quê |
+| :--- | :--- |
+| `credits_remaining_brl` e `percent_used` | Barra de saldo no site e na barra de status do editor |
+| `near_limit` | Verdadeiro acima do aviso configurado (padrão 80%): mostre "o saldo está acabando" |
+| `exhausted` | Verdadeiro quando o próximo job daria 402: mostre a opção de adicionar crédito |
+| `plan_credits_remaining_brl` | O que renova no mês; `topups` é o que **não** renova e tem validade |
+| `renews_at` | Quando o saldo do plano volta ao total |
+| `packs` | Valores de recarga e o saldo que cada um entrega |
+
+O saldo do plano é consumido primeiro; os créditos extras, os que vencem antes
+primeiro. `plan.price_brl` e `plan.credits_brl` também vêm em `GET /v1/auth/me` e
+`GET /v1/meta/plans`. O campo antigo `monthly_cost_limit_usd` foi **removido**: o custo
+real não é mais exposto ao cliente.
+
+Use a cadência de leitura normal (consulte depois de cada job, não em laço).
+
+### Painel de preços (administrador, só sessão)
+
+| Rota | Faz |
+| :--- | :--- |
+| `GET /v1/admin/billing` | Regras em vigor, **valores recomendados**, teto de custo, margem no pior caso e no uso típico, alerta de margem, gasto global |
+| `PATCH /v1/admin/billing/settings` | Altera regras gerais (câmbio, taxas, recarga, avisos). Só os campos enviados mudam |
+| `PATCH /v1/admin/billing/plans/{tier}` | Altera preço, saldo mostrado e parte de custo real de um plano |
+| `POST /v1/admin/accounts/{id}/credits` | Adiciona crédito: `price_brl` (recarga paga) **ou** `credits_brl` (cortesia), nunca os dois |
+
+Toda alteração exige `reason` (mínimo 5 caracteres, sem contar espaços) e grava uma
+linha de auditoria por campo. Pedido que não muda nenhum valor responde 422. Chave de
+API é recusada (404), como no resto do painel.
+
 ## 11. CORS não se aplica à extensão
 
 O CORS restringe **navegadores**. Uma extensão roda no processo Node do VS Code e não
@@ -490,7 +550,7 @@ chamar a API.
 | Status | Significa | O que fazer |
 | :---: | :--- | :--- |
 | 401 | Chave ausente, inválida ou revogada | Pedir a chave de novo |
-| 402 | Cota mensal, teto de gasto ou recurso fora do plano | Mostrar `message`, que já diz o que faltou |
+| 402 | Cota mensal, **saldo de créditos esgotado** ou recurso fora do plano | Mostrar `message`, que já diz o que faltou. Se o saldo acabou, ofereça adicionar crédito |
 | 404 | Recurso não existe **ou não é seu** | Tratar igual: a API não distingue de propósito |
 | 422 | Corpo inválido ou linguagem não suportada | Mostrar `message` |
 | 429 | Limite de requisições | Esperar `Retry-After` |

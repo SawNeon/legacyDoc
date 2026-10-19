@@ -250,7 +250,6 @@ async def command_create_user(args: argparse.Namespace) -> int:
         print(Style.success(f"  conta criada: {email}"))
         print(f"  plano       : {plan.display_name}")
         print(f"  cota mensal : {plan.monthly_job_quota} jobs")
-        print(f"  teto de custo: US$ {plan.monthly_cost_limit_usd:.2f}")
         print(f"  recursos    : {', '.join(sorted(str(item) for item in plan.features))}")
         return 0
     except LegacyDocError as error:

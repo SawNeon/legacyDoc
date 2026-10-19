@@ -365,3 +365,74 @@ class AdminAction(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+class BillingSetting(Base):
+    """Single row holding the commercial rules the operator tunes in the admin panel."""
+
+    __tablename__ = "billing_settings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
+
+    fx_rate_brl_per_usd: Mapped[float] = mapped_column(Float, nullable=False)
+    fees_tax_percent: Mapped[float] = mapped_column(Float, nullable=False)
+    topup_credit_ratio: Mapped[float] = mapped_column(Float, nullable=False)
+    topup_cost_ratio: Mapped[float] = mapped_column(Float, nullable=False)
+    topup_validity_months: Mapped[int] = mapped_column(Integer, nullable=False)
+    topup_pack_prices_brl: Mapped[list[float]] = mapped_column(JSONType, nullable=False)
+    near_limit_percent: Mapped[float] = mapped_column(Float, nullable=False)
+    min_margin_alert_percent: Mapped[float] = mapped_column(Float, nullable=False)
+    typical_usage_percent: Mapped[float] = mapped_column(Float, nullable=False)
+
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+
+class PlanPricing(Base):
+    """Price, displayed credit and real-cost share of one plan tier."""
+
+    __tablename__ = "plan_pricing"
+
+    tier: Mapped[str] = mapped_column(String(20), primary_key=True)
+    price_brl: Mapped[float] = mapped_column(Float, nullable=False)
+    credits_brl: Mapped[float] = mapped_column(Float, nullable=False)
+    cost_ratio: Mapped[float] = mapped_column(Float, nullable=False)
+
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+
+class CreditGrant(Base):
+    """Extra credit on top of the plan, consumed after the monthly allowance."""
+
+    __tablename__ = "credit_grants"
+    __table_args__ = (Index("ix_credit_grants_user_expires", "user_id", "expires_at"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+
+    credits_brl: Mapped[float] = mapped_column(Float, nullable=False)
+    ceiling_usd: Mapped[float] = mapped_column(Float, nullable=False)
+    remaining_usd: Mapped[float] = mapped_column(Float, nullable=False)
+    price_paid_brl: Mapped[float | None] = mapped_column(Float)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class UsageSettlement(Base):
+    """How much of a month's overflow beyond the plan allowance was already charged to credits."""
+
+    __tablename__ = "usage_settlements"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    period: Mapped[str] = mapped_column(String(7), primary_key=True)
+    settled_usd: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)

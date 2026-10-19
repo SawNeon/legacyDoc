@@ -1547,6 +1547,222 @@
         }
       }
     },
+    "/v1/admin/billing": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Get Billing",
+        "description": "Regras comerciais em vigor, com o valor recomendado ao lado de cada uma.",
+        "operationId": "get_billing_v1_admin_billing_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminBillingResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/admin/billing/settings": {
+      "patch": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Update Billing Settings",
+        "operationId": "update_billing_settings_v1_admin_billing_settings_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BillingSettingsUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminBillingResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/admin/billing/plans/{tier}": {
+      "patch": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Update Plan Pricing",
+        "operationId": "update_plan_pricing_v1_admin_billing_plans__tier__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tier",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Tier"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlanPricingUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminBillingResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/accounts/{user_id}/credits": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Add Credits",
+        "description": "Adiciona credito a uma conta: recarga paga (pelo valor) ou cortesia (pelo credito).",
+        "operationId": "add_credits_v1_admin_accounts__user_id__credits_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "User Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreditGrantRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreditGrantResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/usage": {
+      "get": {
+        "tags": [
+          "usage"
+        ],
+        "summary": "Get Usage",
+        "description": "Remaining credit, how much of it is used and what a top-up costs.",
+        "operationId": "get_usage_v1_usage_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsageResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/health": {
       "get": {
         "tags": [
@@ -1646,7 +1862,12 @@
           "cost_limit_usd": {
             "type": "number",
             "title": "Cost Limit Usd",
-            "description": "Teto do plano, para comparar com o gasto."
+            "description": "Teto de custo real do plano, para comparar com o gasto."
+          },
+          "credits_remaining_brl": {
+            "type": "number",
+            "title": "Credits Remaining Brl",
+            "description": "Saldo que o cliente ve, plano mais creditos extras."
           },
           "documents_total": {
             "type": "integer",
@@ -1690,6 +1911,7 @@
           "jobs_this_month",
           "spent_this_month_usd",
           "cost_limit_usd",
+          "credits_remaining_brl",
           "documents_total",
           "last_job_at"
         ],
@@ -1759,6 +1981,44 @@
           "created_at"
         ],
         "title": "AdminActionResponse"
+      },
+      "AdminBillingResponse": {
+        "properties": {
+          "settings": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Settings"
+          },
+          "recommended_settings": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Recommended Settings"
+          },
+          "plans": {
+            "items": {
+              "$ref": "#/components/schemas/BillingPlanView"
+            },
+            "type": "array",
+            "title": "Plans"
+          },
+          "global_spend_usd": {
+            "type": "number",
+            "title": "Global Spend Usd"
+          },
+          "global_budget_usd": {
+            "type": "number",
+            "title": "Global Budget Usd"
+          }
+        },
+        "type": "object",
+        "required": [
+          "settings",
+          "recommended_settings",
+          "plans",
+          "global_spend_usd",
+          "global_budget_usd"
+        ],
+        "title": "AdminBillingResponse"
       },
       "AdminPlanChangeRequest": {
         "properties": {
@@ -1933,6 +2193,211 @@
         ],
         "title": "ApiKeyResponse"
       },
+      "BillingPlanView": {
+        "properties": {
+          "tier": {
+            "type": "string",
+            "title": "Tier"
+          },
+          "price_brl": {
+            "type": "number",
+            "title": "Price Brl"
+          },
+          "credits_brl": {
+            "type": "number",
+            "title": "Credits Brl"
+          },
+          "cost_ratio": {
+            "type": "number",
+            "title": "Cost Ratio"
+          },
+          "ceiling_usd": {
+            "type": "number",
+            "title": "Ceiling Usd"
+          },
+          "worst_case_margin_percent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Worst Case Margin Percent"
+          },
+          "typical_margin_percent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Typical Margin Percent"
+          },
+          "margin_alert": {
+            "type": "boolean",
+            "title": "Margin Alert"
+          },
+          "recommended": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Recommended"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tier",
+          "price_brl",
+          "credits_brl",
+          "cost_ratio",
+          "ceiling_usd",
+          "worst_case_margin_percent",
+          "typical_margin_percent",
+          "margin_alert",
+          "recommended"
+        ],
+        "title": "BillingPlanView"
+      },
+      "BillingSettingsUpdate": {
+        "properties": {
+          "reason": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 5,
+            "title": "Reason"
+          },
+          "fx_rate_brl_per_usd": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fx Rate Brl Per Usd"
+          },
+          "fees_tax_percent": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 60.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fees Tax Percent"
+          },
+          "topup_credit_ratio": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 10.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Topup Credit Ratio"
+          },
+          "topup_cost_ratio": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Topup Cost Ratio"
+          },
+          "topup_validity_months": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 60.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Topup Validity Months"
+          },
+          "topup_pack_prices_brl": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array",
+                "maxItems": 10,
+                "minItems": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Topup Pack Prices Brl"
+          },
+          "near_limit_percent": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Near Limit Percent"
+          },
+          "min_margin_alert_percent": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Margin Alert Percent"
+          },
+          "typical_usage_percent": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Typical Usage Percent"
+          }
+        },
+        "type": "object",
+        "required": [
+          "reason"
+        ],
+        "title": "BillingSettingsUpdate"
+      },
       "Body_create_upload_job_v1_jobs_upload_post": {
         "properties": {
           "file": {
@@ -2087,6 +2552,78 @@
           "created_at"
         ],
         "title": "ContextItemResponse"
+      },
+      "CreditGrantRequest": {
+        "properties": {
+          "reason": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 5,
+            "title": "Reason"
+          },
+          "price_brl": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Brl",
+            "description": "Valor pago: o credito sai da razao de recarga."
+          },
+          "credits_brl": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Credits Brl",
+            "description": "Credito de cortesia, sem valor pago."
+          }
+        },
+        "type": "object",
+        "required": [
+          "reason"
+        ],
+        "title": "CreditGrantRequest"
+      },
+      "CreditGrantResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "credits_brl": {
+            "type": "number",
+            "title": "Credits Brl"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expires At"
+          },
+          "account": {
+            "$ref": "#/components/schemas/AdminAccountResponse"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "credits_brl",
+          "expires_at",
+          "account"
+        ],
+        "title": "CreditGrantResponse"
       },
       "DocumentResponse": {
         "properties": {
@@ -2640,9 +3177,15 @@
             "type": "integer",
             "title": "Monthly Job Quota"
           },
-          "monthly_cost_limit_usd": {
+          "price_brl": {
             "type": "number",
-            "title": "Monthly Cost Limit Usd"
+            "title": "Price Brl",
+            "description": "Preco mensal do plano, em reais."
+          },
+          "credits_brl": {
+            "type": "number",
+            "title": "Credits Brl",
+            "description": "Saldo mensal exibido ao cliente, em reais."
           },
           "max_files_per_job": {
             "type": "integer",
@@ -2678,13 +3221,68 @@
           "tier",
           "display_name",
           "monthly_job_quota",
-          "monthly_cost_limit_usd",
+          "price_brl",
+          "credits_brl",
           "max_files_per_job",
           "max_concurrent_jobs",
           "features",
           "max_depth"
         ],
         "title": "PlanInfo"
+      },
+      "PlanPricingUpdate": {
+        "properties": {
+          "reason": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 5,
+            "title": "Reason"
+          },
+          "price_brl": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Brl"
+          },
+          "credits_brl": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Credits Brl"
+          },
+          "cost_ratio": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Ratio"
+          }
+        },
+        "type": "object",
+        "required": [
+          "reason"
+        ],
+        "title": "PlanPricingUpdate"
       },
       "ProjectCreateRequest": {
         "properties": {
@@ -3175,6 +3773,140 @@
           "expires_in_seconds"
         ],
         "title": "TokenResponse"
+      },
+      "UsagePack": {
+        "properties": {
+          "price_brl": {
+            "type": "number",
+            "title": "Price Brl"
+          },
+          "credits_brl": {
+            "type": "number",
+            "title": "Credits Brl"
+          }
+        },
+        "type": "object",
+        "required": [
+          "price_brl",
+          "credits_brl"
+        ],
+        "title": "UsagePack"
+      },
+      "UsageResponse": {
+        "properties": {
+          "plan_tier": {
+            "type": "string",
+            "title": "Plan Tier"
+          },
+          "plan_name": {
+            "type": "string",
+            "title": "Plan Name"
+          },
+          "plan_price_brl": {
+            "type": "number",
+            "title": "Plan Price Brl"
+          },
+          "credits_total_brl": {
+            "type": "number",
+            "title": "Credits Total Brl"
+          },
+          "credits_remaining_brl": {
+            "type": "number",
+            "title": "Credits Remaining Brl"
+          },
+          "plan_credits_remaining_brl": {
+            "type": "number",
+            "title": "Plan Credits Remaining Brl"
+          },
+          "percent_used": {
+            "type": "number",
+            "title": "Percent Used"
+          },
+          "near_limit": {
+            "type": "boolean",
+            "title": "Near Limit",
+            "description": "Verdadeiro quando o uso passou do aviso configurado."
+          },
+          "exhausted": {
+            "type": "boolean",
+            "title": "Exhausted"
+          },
+          "period_start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period Start"
+          },
+          "renews_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Renews At"
+          },
+          "jobs_used_this_month": {
+            "type": "integer",
+            "title": "Jobs Used This Month"
+          },
+          "monthly_job_quota": {
+            "type": "integer",
+            "title": "Monthly Job Quota"
+          },
+          "topups": {
+            "items": {
+              "$ref": "#/components/schemas/UsageTopup"
+            },
+            "type": "array",
+            "title": "Topups"
+          },
+          "packs": {
+            "items": {
+              "$ref": "#/components/schemas/UsagePack"
+            },
+            "type": "array",
+            "title": "Packs"
+          }
+        },
+        "type": "object",
+        "required": [
+          "plan_tier",
+          "plan_name",
+          "plan_price_brl",
+          "credits_total_brl",
+          "credits_remaining_brl",
+          "plan_credits_remaining_brl",
+          "percent_used",
+          "near_limit",
+          "exhausted",
+          "period_start",
+          "renews_at",
+          "jobs_used_this_month",
+          "monthly_job_quota",
+          "topups",
+          "packs"
+        ],
+        "title": "UsageResponse"
+      },
+      "UsageTopup": {
+        "properties": {
+          "credits_brl": {
+            "type": "number",
+            "title": "Credits Brl"
+          },
+          "remaining_brl": {
+            "type": "number",
+            "title": "Remaining Brl"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expires At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "credits_brl",
+          "remaining_brl",
+          "expires_at"
+        ],
+        "title": "UsageTopup"
       },
       "UserResponse": {
         "properties": {

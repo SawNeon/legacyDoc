@@ -689,7 +689,8 @@ async def test_monthly_spend_is_reported_in_me(client: AsyncClient, session):
     body = (await client.get("/v1/auth/me", headers=headers)).json()
 
     assert abs(body["spent_this_month_usd"] - 0.12) < 1e-6
-    assert body["plan"]["monthly_cost_limit_usd"] == 0.50
+    assert body["plan"]["credits_brl"] == 5.0
+    assert "monthly_cost_limit_usd" not in body["plan"]
 
 
 async def test_user_blocked_when_cost_ceiling_reached(client: AsyncClient, session):
@@ -707,7 +708,8 @@ async def test_user_blocked_when_cost_ceiling_reached(client: AsyncClient, sessi
     body = response.json()
     assert body["error"] == "quota_exceeded"
     assert body["details"]["scope"] == "user"
-    assert body["details"]["limit_usd"] == 0.50
+    assert body["details"]["credits_remaining_brl"] == 0.0
+    assert "limit_usd" not in body["details"]
 
 
 async def test_job_accepted_below_cost_ceiling(client: AsyncClient, session):
