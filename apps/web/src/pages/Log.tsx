@@ -1,3 +1,4 @@
+import ConfirmarExclusao from "../components/ConfirmarExclusao";
 import Navbar from "../components/Navbar";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -47,8 +48,18 @@ export default function Log() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [abrindo, setAbrindo] = useState<string | null>(null);
-  const [confirmando, setConfirmando] = useState<string | null>(null);
+  const [paraExcluir, setParaExcluir] = useState<Job | null>(null);
   const [excluindo, setExcluindo] = useState<string | null>(null);
+  const [erroExclusao, setErroExclusao] = useState<string | null>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!aviso) return;
+
+    const temporizador = setTimeout(() => setAviso(null), 4000);
+
+    return () => clearTimeout(temporizador);
+  }, [aviso]);
 
   const buscar = useCallback(
     (aplicar: (lista: Job[] | null, erro: string | null) => void) => {
@@ -125,18 +136,43 @@ export default function Log() {
     }
   }
 
-  async function excluir(job: Job) {
-    setExcluindo(job.id);
+  function pedirExclusao(job: Job) {
+    setErroExclusao(null);
+    setParaExcluir(job);
+  }
+
+  function fecharConfirmacao() {
+    setParaExcluir(null);
+    setErroExclusao(null);
+  }
+
+  async function confirmarExclusao() {
+    const alvo = paraExcluir;
+    if (!alvo) return;
+
+    setExcluindo(alvo.id);
+    setErroExclusao(null);
 
     try {
-      await deleteJobRecord(job.id);
-      setJobs((atuais) => atuais.filter((item) => item.id !== job.id));
-      setConfirmando(null);
+      await deleteJobRecord(alvo.id);
+      setAviso("Análise excluída.");
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Não foi possível excluir a análise.");
+      const mensagem =
+        error instanceof Error ? error.message : "Não foi possível excluir a análise.";
+
+      if (!/n[aã]o encontrado/i.test(mensagem)) {
+        setErroExclusao(mensagem);
+        return;
+      }
+
+      setAviso("Esta análise já tinha sido excluída.");
     } finally {
       setExcluindo(null);
     }
+
+    setJobs((atuais) => atuais.filter((item) => item.id !== alvo.id));
+    fecharConfirmacao();
+    atualizar();
   }
 
   async function baixar(job: Job, formato: "pdf" | "markdown") {
@@ -174,6 +210,10 @@ export default function Log() {
           <button className="btn btn-secondary" onClick={atualizar} disabled={carregando}>
             {carregando ? "Carregando..." : "Atualizar"}
           </button>
+
+          <p className="log-aviso" role="status" aria-live="polite">
+            {aviso}
+          </p>
 
           <div className="log-list">
             {erro && (
@@ -239,40 +279,31 @@ export default function Log() {
                     Markdown
                   </button>
 
-                  {STATUS_FINAIS.includes(job.status) &&
-                    (confirmando === job.id ? (
-                      <>
-                        <button
-                          className="btn btn-danger"
-                          disabled={excluindo === job.id}
-                          onClick={() => excluir(job)}
-                        >
-                          {excluindo === job.id ? "Excluindo..." : "Confirmar exclusão"}
-                        </button>
-
-                        <button
-                          className="btn btn-secondary"
-                          disabled={excluindo === job.id}
-                          onClick={() => setConfirmando(null)}
-                        >
-                          Cancelar
-                        </button>
-                      </>
-                    ) : (
-                      <button
-                        className="btn btn-secondary"
-                        aria-label={`Excluir a análise de ${job.source ?? "origem desconhecida"}`}
-                        onClick={() => setConfirmando(job.id)}
-                      >
-                        Excluir
-                      </button>
-                    ))}
+                  {STATUS_FINAIS.includes(job.status) && (
+                    <button
+                      className="btn btn-secondary"
+                      aria-label={`Excluir a análise de ${job.source ?? "origem desconhecida"}`}
+                      disabled={excluindo === job.id}
+                      onClick={() => pedirExclusao(job)}
+                    >
+                      Excluir
+                    </button>
+                  )}
                 </div>
               </article>
             ))}
           </div>
         </section>
       </main>
+
+      <ConfirmarExclusao
+        origem={paraExcluir?.source ?? null}
+        aberto={paraExcluir !== null}
+        excluindo={excluindo !== null}
+        erro={erroExclusao}
+        aoConfirmar={confirmarExclusao}
+        aoCancelar={fecharConfirmacao}
+      />
     </>
   );
 }
