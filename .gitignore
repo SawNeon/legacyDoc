@@ -21,7 +21,8 @@ node_modules/
 .vscode/
 
 # Repositorios da v1, com historico proprio. Mantidos como referencia durante a
-# migracao; incluir aqui os transformaria em submodulos fantasma.
+# migracao; incluir aqui os transformaria em submodulos fantasma. O front da v2
+# vive em apps/web; /Front/ e so a copia antiga do repositorio separado.
 /legacyDoc/
 /Front/
 /DEPLOY.md

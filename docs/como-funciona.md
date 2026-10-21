@@ -44,6 +44,7 @@ Três decisões explicam quase tudo:
 | `apps/api` | Rotas HTTP, autenticação, cotas, rate limit | `core` |
 | `apps/worker` | Laço que pega jobs da fila e os executa | `core`, `agents`, `providers`, `parsing` |
 | `apps/cli` | Migração, criação de usuário, `set-admin`, smoke test | `core` |
+| `apps/web` | Front em React 19 + Vite: telas, painel admin, envio de pasta | só a API, por HTTP |
 | `packages/core` | Modelos, planos, fila, segurança, zip, clone, configuração | nada interno |
 | `packages/parsing` | tree-sitter: símbolos, blocos, índice entre arquivos | `core` |
 | `packages/agents` | Pipeline dos agentes, prompts, seleção de contexto | `core`, `parsing`, `providers` |
@@ -62,7 +63,7 @@ domínio são traduzidos para HTTP num lugar só (fluxo 1.3).
 | Migrar o banco | `python -m legacydoc_cli.db migrate` |
 | API | `uvicorn legacydoc_api.main:get_app --factory --port 8001` |
 | Worker | `python -m legacydoc_worker` |
-| Front | `npm run dev` em `Front/test/LegacyDocFront` |
+| Front | `npm run dev` em `apps/web` (copie `.env.example` para `.env`) |
 | Promover admin | `python -m legacydoc_cli.db set-admin <email>` |
 
 **Sem o worker rodando, os jobs ficam eternamente em `queued`.** É a causa mais comum
@@ -568,7 +569,7 @@ No front é o botão **Excluir** do histórico, com confirmação em dois passos
 
 ---
 
-## 9. O front (`Front/LegacyDocFront`)
+## 9. O front (`apps/web`)
 
 ### 9.1 Do clique ao resultado
 
@@ -673,7 +674,7 @@ Postgres real quando disponível).
 | `test_parsing.py`, `test_legacy_languages.py`, `test_symbol_index.py` | 36 linguagens, símbolos, índice |
 | `test_providers.py` | Cadeia de reserva, custo, cache |
 
-No front (`Front/LegacyDocFront`, `npm test`, Vitest), 82 testes:
+No front (`apps/web`, `npm test`, Vitest), 82 testes:
 
 | Arquivo | Garante |
 | :--- | :--- |

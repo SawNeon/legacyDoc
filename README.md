@@ -10,6 +10,8 @@ fila e planos com níveis diferentes de análise.
 apps/
   api/          FastAPI. Só HTTP: valida, autoriza, enfileira. Responde em ms.
   worker/       Processa jobs. É onde clone, LLM e exportação acontecem.
+  cli/          Migração, criação de usuário, admin, smoke test.
+  web/          Front em React (Vite). Fala com a API por HTTP.
 packages/
   core/         Config, modelos, fila, segurança, ingestão de repositório.
   providers/    Camada multi-provedor (OpenAI, Anthropic, Gemini) + roteador.
@@ -18,8 +20,8 @@ packages/
   exporters/    Markdown, PDF e JSON.
 infra/          Dockerfile e docker-compose.
 migrations/     Alembic.
-docs/           Contrato da API e OpenAPI.
-tests/          92 testes.
+docs/           Fluxos, contrato da API, guia da extensão, deploy e custos.
+tests/          Testes do backend (o front tem os seus em apps/web).
 ```
 
 A separação **api / worker** é o ponto central da arquitetura. Trabalho pesado
@@ -101,7 +103,7 @@ pytest -q
 ruff check .
 ```
 
-No front: `npm test` em `Front/LegacyDocFront`.
+No front: `npm test` em `apps/web`.
 
 Os testes rodam em SQLite e não gastam nenhum token: os provedores de LLM são
 substituídos por dublês.
